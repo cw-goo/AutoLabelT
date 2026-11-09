@@ -92,6 +92,7 @@
         <file>images/icon.icns</file>
         <file>images/icon.ico</file>
         <file alias="images/icon.png">../../assets/logo.png</file>
+        <file alias="images/icon.svg">../../assets/logo.svg</file>
         <file>images/idea-research.png</file>
         <file>images/image.svg</file>
         <file>images/imoonlab.png</file>
@@ -107,6 +108,7 @@
         <file>images/lock.svg</file>
         <file>images/label.png</file>
         <file alias="images/logo.png">../../assets/logo.png</file>
+        <file alias="images/logo.svg">../../assets/logo.svg</file>
         <file>images/loop.png</file>
         <file>images/magic_wand.png</file>
         <file>images/megvii.png</file>

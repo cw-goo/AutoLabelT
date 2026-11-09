@@ -1,6 +1,7 @@
-"""Export platform icons from the shared PNG logo; rebuild Qt resources afterwards."""
+"""Render the vector master to PNG and platform icons; rebuild Qt resources afterwards."""
 from pathlib import Path
 import argparse
+import os
 
 from PIL import Image
 
@@ -8,13 +9,39 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def render_svg(source, output, size):
+    from PyQt6 import QtCore, QtGui, QtSvg
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    app = QtGui.QGuiApplication.instance() or QtGui.QGuiApplication([])
+    renderer = QtSvg.QSvgRenderer(str(source))
+    if not renderer.isValid():
+        raise ValueError(f"Invalid SVG logo: {source}")
+    image = QtGui.QImage(size, size, QtGui.QImage.Format.Format_ARGB32)
+    image.fill(QtCore.Qt.GlobalColor.transparent)
+    painter = QtGui.QPainter(image)
+    renderer.render(painter)
+    painter.end()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if not image.save(str(output)):
+        raise OSError(f"Cannot save rendered logo: {output}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", type=Path, default=ROOT / "autolabel/assets/logo.png")
+    parser.add_argument("--source", type=Path, default=ROOT / "autolabel/assets/logo.svg")
+    parser.add_argument("--png-output", type=Path, default=ROOT / "autolabel/assets/logo.png")
+    parser.add_argument("--size", type=int, default=1024)
     parser.add_argument("--output-dir", type=Path,
                         default=ROOT / "autolabel/workbench/resources/images")
     args = parser.parse_args()
-    with Image.open(args.source) as image:
+    source = args.source
+    if source.suffix.lower() == ".svg":
+        if args.size < 256:
+            parser.error("PNG export size must be at least 256 pixels")
+        render_svg(source, args.png_output, args.size)
+        source = args.png_output
+    with Image.open(source) as image:
         if image.mode != "RGBA" or image.width != image.height:
             parser.error("The logo must be a square RGBA PNG")
         if image.getpixel((0, 0))[3] != 0:

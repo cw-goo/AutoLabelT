@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="140 145 950 950" role="img" aria-labelledby="title desc">
+  <title id="title">AutoLabel — Woodpecker A</title>
+  <desc id="desc">A blue woodpecker with an orange crest forms an A with a copper branch and two green leaves. Transparent background; editable vector paths and gradients.</desc>
+  <defs>
+    <linearGradient id="wood" x1="700" y1="440" x2="890" y2="1060" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#673828"/><stop offset=".34" stop-color="#bc602a"/>
+      <stop offset=".60" stop-color="#7c391e"/><stop offset=".82" stop-color="#462e32"/><stop offset="1" stop-color="#ce7542"/>
+    </linearGradient>
+    <linearGradient id="woodEdge" x1="700" y1="590" x2="860" y2="525" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7c3824"/><stop offset=".52" stop-color="#e88c3c"/><stop offset="1" stop-color="#ffcf7a"/>
+    </linearGradient>
+    <linearGradient id="branch" x1="501" y1="764" x2="558" y2="915" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffda8e"/><stop offset=".22" stop-color="#e2944d"/>
+      <stop offset=".50" stop-color="#ac572d"/><stop offset=".76" stop-color="#74331e"/><stop offset="1" stop-color="#d37938"/>
+    </linearGradient>
+    <linearGradient id="branchLight" x1="526" y1="762" x2="551" y2="835" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff0bc"/><stop offset=".45" stop-color="#ffbc65"/><stop offset="1" stop-color="#d97932"/>
+    </linearGradient>
+    <linearGradient id="bird" x1="356" y1="577" x2="649" y2="686" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#159be9"/><stop offset=".30" stop-color="#0863c0"/>
+      <stop offset=".64" stop-color="#003575"/><stop offset="1" stop-color="#031b46"/>
+    </linearGradient>
+    <linearGradient id="wing" x1="367" y1="566" x2="478" y2="670" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#a1fffb"/><stop offset=".22" stop-color="#37e8f6"/>
+      <stop offset=".60" stop-color="#0c9ee9"/><stop offset="1" stop-color="#04549e"/>
+    </linearGradient>
+    <linearGradient id="wingLower" x1="290" y1="630" x2="626" y2="775" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#43eaf5"/><stop offset=".30" stop-color="#078edb"/>
+      <stop offset=".63" stop-color="#00478b"/><stop offset="1" stop-color="#001b49"/>
+    </linearGradient>
+    <linearGradient id="feather" x1="617" y1="388" x2="728" y2="438" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff"/><stop offset=".57" stop-color="#f8fcff"/><stop offset=".84" stop-color="#d8e8f3"/><stop offset="1" stop-color="#a3c6e0"/>
+    </linearGradient>
+    <linearGradient id="beak" x1="763" y1="312" x2="796" y2="371" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#064585"/><stop offset=".35" stop-color="#0875c2"/><stop offset=".60" stop-color="#034378"/><stop offset="1" stop-color="#001e4e"/>
+    </linearGradient>
+    <linearGradient id="crest" x1="489" y1="224" x2="514" y2="326" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffdb72"/><stop offset=".23" stop-color="#ff9a00"/>
+      <stop offset=".59" stop-color="#ff6c00"/><stop offset="1" stop-color="#d72d00"/>
+    </linearGradient>
+    <linearGradient id="crestLight" x1="508" y1="211" x2="524" y2="273" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff3af"/><stop offset=".44" stop-color="#ffb42e"/><stop offset="1" stop-color="#ff8a00"/>
+    </linearGradient>
+    <linearGradient id="crestLower" x1="542" y1="280" x2="553" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f34200"/><stop offset=".48" stop-color="#fb6400"/><stop offset=".83" stop-color="#ffaf43"/><stop offset="1" stop-color="#ffe0a0"/>
+    </linearGradient>
+    <radialGradient id="eye" cx=".68" cy=".28" r=".74">
+      <stop stop-color="#159ce5"/><stop offset=".32" stop-color="#0053a2"/><stop offset=".73" stop-color="#002d6e"/><stop offset="1" stop-color="#00133e"/>
+    </radialGradient>
+    <linearGradient id="leafTop" x1="916" y1="581" x2="963" y2="622" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d4ed06"/><stop offset=".35" stop-color="#8ed32e"/><stop offset=".68" stop-color="#329b3b"/><stop offset="1" stop-color="#07664c"/>
+    </linearGradient>
+    <linearGradient id="leafSide" x1="978" y1="643" x2="980" y2="697" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#bce72e"/><stop offset=".30" stop-color="#69bc33"/><stop offset=".66" stop-color="#278d4a"/><stop offset="1" stop-color="#08755d"/>
+    </linearGradient>
+    <linearGradient id="coolEdge" x1="754" y1="783" x2="949" y2="937" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8cffff"/><stop offset=".42" stop-color="#29d9fa"/><stop offset="1" stop-color="#2f6084" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <g id="branch-a">
+    <path fill="url(#wood)" d="M730 411C774 489 820 579 859 659L950 847C991 929 941 996 720 1065C807 994 840 926 802 869C772 824 713 807 671 801L648 620Z"/>
+    <path fill="url(#woodEdge)" d="M735 424C778 500 821 583 856 656C870 685 864 709 842 733C793 659 746 561 700 472Z"/>
+    <path fill="#ffe0a0" opacity=".84" d="M741 448C782 523 821 598 855 669C857 681 855 692 851 701C822 634 780 538 741 448Z"/>
+  </g>
+  <g id="woodpecker">
+    <path fill="url(#bird)" d="M203 1030C263 817 390 535 540 378C584 333 626 308 668 310C623 323 597 344 588 374C576 412 597 443 622 479C649 517 663 550 655 591C642 665 582 727 499 784C372 871 266 945 203 1030Z"/>
+    <path fill="#238cf0" opacity=".62" d="M267 842C337 644 433 469 550 365C595 326 635 309 668 310C588 331 523 400 465 476C380 587 316 726 267 842Z"/>
+    <path fill="url(#feather)" d="M667 310C701 281 742 285 770 316L949 334L770 388C724 414 700 453 686 500C676 534 681 573 677 612C653 677 590 735 502 785C572 718 631 660 649 596C664 547 635 507 611 473C588 442 578 412 590 373C600 339 630 319 667 310Z"/>
+    <path fill="url(#beak)" d="M765 310C813 326 883 327 949 334C882 333 826 339 770 346C758 338 749 328 741 322Z"/>
+    <path fill="url(#beak)" d="M949 334L766 393C718 420 693 458 678 521C678 454 699 408 742 376Z"/>
+    <path fill="url(#feather)" d="M767 344C820 341 878 337 935 335C879 346 821 362 775 377C736 394 709 423 693 461C703 410 727 373 767 344Z"/>
+    <path fill="#55e4fa" opacity=".62" d="M744 390C712 419 692 457 681 496C688 445 709 412 744 390Z"/>
+    <path fill="url(#wing)" d="M210 951C265 764 350 574 444 498C489 460 533 452 574 468C605 481 619 502 626 526C534 524 441 569 356 647C291 709 245 835 210 951Z"/>
+    <path fill="#adffff" opacity=".78" d="M223 902C279 737 354 586 445 508C491 468 533 455 574 468C521 454 479 480 443 511C349 597 281 745 223 902Z"/>
+    <path fill="url(#wingLower)" d="M204 1030C276 882 382 775 503 698C568 657 609 601 626 526C639 576 620 637 578 682C491 757 399 832 302 931C258 974 224 1011 204 1030Z"/>
+    <path fill="#f5fcff" d="M235 935C342 792 464 744 553 671C594 637 617 585 626 538C630 594 608 644 577 680C487 752 361 826 235 935Z"/>
+    <path fill="#55eeff" opacity=".84" d="M384 845C437 797 486 767 533 735C516 758 488 780 461 796C433 814 406 829 384 845Z"/>
+    <path fill="url(#crestLower)" d="M372 315C413 341 464 313 527 284C623 240 704 251 776 311C714 277 678 268 627 284C546 312 467 382 411 356C393 347 380 331 372 315Z"/>
+    <path fill="url(#crest)" d="M338 192C374 258 461 241 552 220C650 194 729 230 776 311C705 274 656 263 595 285C512 317 443 332 388 306C353 287 341 244 338 192Z"/>
+    <path fill="url(#crestLight)" d="M340 201C387 265 466 241 558 219C651 198 728 233 776 311C701 241 643 224 568 245C460 279 389 269 340 201Z"/>
+    <path fill="#ffe59b" opacity=".9" d="M436 323C490 310 541 287 590 274C649 255 691 263 729 280C679 265 639 261 592 277C533 294 484 315 436 323Z"/>
+    <circle cx="706" cy="338" r="22" fill="url(#eye)" stroke="#002d69" stroke-width="1.5"/>
+    <circle cx="715" cy="326" r="5.3" fill="#fff"/>
+    <circle cx="718" cy="330" r="3.5" fill="#adf8ff" opacity=".7"/>
+  </g>
+  <g id="crossbar-and-leaves">
+    <path fill="url(#branch)" d="M203 1065C304 891 464 815 652 764C791 726 869 698 908 630L920 638C905 704 878 744 831 767C770 798 675 818 561 864C404 926 279 1006 203 1065Z"/>
+    <path fill="url(#branchLight)" d="M211 1049C322 890 472 819 655 769C784 734 869 704 909 643C882 709 807 741 664 781C459 838 330 909 211 1049Z"/>
+    <path fill="#fff0c5" opacity=".83" d="M371 901C464 839 558 807 666 776C782 743 839 723 880 687C841 729 770 751 670 780C549 815 462 845 371 901Z"/>
+    <path d="M752 790C827 787 884 810 917 849C935 871 934 893 914 916" fill="none" stroke="url(#coolEdge)" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M875 708C894 677 903 643 919 614M900 664L950 670" fill="none" stroke="#985026" stroke-width="7" stroke-linecap="round"/>
+    <path fill="url(#leafTop)" d="M899 652C886 611 926 558 998 552C979 599 959 637 899 652Z"/>
+    <path fill="#d7ef9c" opacity=".9" d="M901 650C922 614 950 583 987 559C957 585 930 615 901 650Z"/>
+    <path fill="url(#leafSide)" d="M925 675C955 636 997 635 1034 661C999 687 961 705 925 675Z"/>
+    <path fill="#e0f5a3" opacity=".88" d="M928 674C960 663 993 659 1027 662C991 662 958 667 928 674Z"/>
+  </g>
+</svg>

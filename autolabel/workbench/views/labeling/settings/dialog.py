@@ -255,7 +255,7 @@ class SettingsDialog(QtWidgets.QDialog):
         return pixmap
 
     def _brand_logo_pixmap(self) -> QtGui.QPixmap:
-        pixmap = QtGui.QPixmap(new_icon_path("icon", "png"))
+        pixmap = QtGui.QPixmap(new_icon_path("icon", "svg"))
         if pixmap.isNull():
             return self._icon_pixmap(
                 "Brand", QtGui.QColor(*self._palette["left_active_text"])

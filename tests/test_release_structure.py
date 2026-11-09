@@ -3,6 +3,7 @@ from importlib.resources import files
 from pathlib import Path
 import ast
 import tomllib
+import xml.etree.ElementTree as ET
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,16 +31,37 @@ def test_packaged_qt_resources_and_translations_load():
     assert files("autolabel.workbench").joinpath("resources/resources.rcc").is_file()
     assert QtCore.QFile.exists(":/images/images/icon.png")
     # Both workbench icon aliases must ship the current shared brand asset.
-    logo = files("autolabel").joinpath("assets/logo.png").read_bytes()
-    for name in ("icon", "logo"):
-        resource = QtCore.QFile(f":/images/images/{name}.png")
-        assert resource.open(QtCore.QIODevice.OpenModeFlag.ReadOnly)
-        assert bytes(resource.readAll()) == logo
-        resource.close()
+    for extension in ("png", "svg"):
+        logo = files("autolabel").joinpath(f"assets/logo.{extension}").read_bytes()
+        for name in ("icon", "logo"):
+            resource = QtCore.QFile(f":/images/images/{name}.{extension}")
+            assert resource.open(QtCore.QIODevice.OpenModeFlag.ReadOnly)
+            assert bytes(resource.readAll()) == logo
+            resource.close()
     assert files("autolabel.workbench").joinpath("configs/models.yaml").is_file()
     translator = QtCore.QTranslator()
     assert translator.load(":/languages/translations/zh_CN.qm")
     assert translator.translate("ExportFormatDialog", "Generate the model configuration and load it in AutoLabel") == "生成模型配置并在 AutoLabel 中加载"
+
+
+def test_brand_logo_is_editable_vector_and_renders_at_icon_sizes():
+    from PyQt6 import QtCore, QtGui, QtSvg
+
+    source = files("autolabel").joinpath("assets/logo.svg").read_text(encoding="utf-8")
+    tree = ET.fromstring(source)
+    assert tree.findall(".//{http://www.w3.org/2000/svg}path")
+    assert not tree.findall(".//{http://www.w3.org/2000/svg}image")
+    assert "data:image" not in source
+    renderer = QtSvg.QSvgRenderer(source.encode("utf-8"))
+    assert renderer.isValid()
+    for size in (28, 256):
+        image = QtGui.QImage(size, size, QtGui.QImage.Format.Format_ARGB32)
+        image.fill(QtCore.Qt.GlobalColor.transparent)
+        painter = QtGui.QPainter(image)
+        renderer.render(painter)
+        painter.end()
+        assert image.pixelColor(0, 0).alpha() == 0
+        assert any(image.pixelColor(x, y).alpha() for x in range(size) for y in range(size))
 
 
 def test_all_launch_modes_use_autolabel_identity(monkeypatch):

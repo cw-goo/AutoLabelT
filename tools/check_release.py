@@ -56,7 +56,7 @@ def main():
             for number, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
                 if secret.search(line):
                     errors.append(f"Possible credential: {relative}:{number} (value hidden)")
-    required = ["LICENSE", "THIRD_PARTY_NOTICES.md", "autolabel/assets/logo.png",
+    required = ["LICENSE", "THIRD_PARTY_NOTICES.md", "autolabel/assets/logo.svg", "autolabel/assets/logo.png",
                 "autolabel/workbench/configs/autolabel_config.yaml",
                 "autolabel/workbench/resources/resources.rcc", "docs/images/workbench.png"]
     errors.extend(f"Missing required file: {name}" for name in required if not (ROOT / name).is_file())

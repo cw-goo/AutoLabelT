@@ -46,4 +46,4 @@ python tools/verify_brand_ui.py
 python tools/review_readme.py
 ```
 
-平台图标从当前 PNG 主图导出；界面预览使用独立临时配置，不覆盖用户设置；README 工具检查本地链接、页内导航和折叠区，并生成 `artifacts/readme-preview.html`。Qt 资源重建步骤见 [品牌说明](branding.md)。
+PNG 与平台图标从当前 SVG 矢量主图导出；界面预览使用独立临时配置，不覆盖用户设置；README 工具检查本地链接、页内导航和折叠区，并生成 `artifacts/readme-preview.html`。Qt 资源重建步骤见 [品牌说明](branding.md)。
