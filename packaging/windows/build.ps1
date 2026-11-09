@@ -17,7 +17,7 @@ New-Item -ItemType Directory -Force -Path $stage | Out-Null
 
 Push-Location $repo
 try {
-    & $Python -m pip wheel --no-deps --no-build-isolation --wheel-dir $stage .
+    & $Python tools/build_distribution.py --output-dir $stage
     if ($LASTEXITCODE -ne 0) { throw "Wheel build failed" }
 } finally {
     Pop-Location

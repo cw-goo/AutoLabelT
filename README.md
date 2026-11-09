@@ -172,7 +172,7 @@ YOLO TXT 每行保持 `class_id center_x center_y width height`，坐标归一�
 ```bash
 python -m pip install -e ".[test]"
 python -m pytest -q tests
-python -m pip wheel --no-deps --no-build-isolation --wheel-dir dist .
+python tools/build_distribution.py --output-dir dist
 ```
 
 Qt 测试使用 `QT_QPA_PLATFORM=offscreen`。若 Windows 默认临时目录不可写，可将 TEMP/TMP 设置到仓库可写目录，并指定 `--basetemp=artifacts/test_runs/current`；先创建父目录。
@@ -188,7 +188,7 @@ python tools/build_resources.py --rcc /path/to/rcc --lrelease /path/to/lrelease
 
 仓库自带运行必需的 `resources.rcc`，最终用户无需安装 Qt 构建工具。GitHub Actions 提供 Windows/Linux 测试与 wheel 构建配置；工作流通过不替代目标设备上的 GPU 和真实视频验收。
 
-模型权重、数据集、测试输出、构建目录和本地软著材料不纳入 Git。发布前可运行 `python tools/check_release.py --check-index` 检查暂存内容；详细整理说明见 [发布清理记录](docs/release-preparation.zh-CN.md)。
+模型权重、数据集、测试输出、构建目录和本地软著材料不纳入 Git。发布前可运行 `python tools/check_release.py --check-index` 检查暂存内容；目录用途与干净构建步骤见 [本地输出说明](docs/artifacts.md)，历史整理说明见 [发布清理记录](docs/release-preparation.zh-CN.md)。
 
 </details>
 

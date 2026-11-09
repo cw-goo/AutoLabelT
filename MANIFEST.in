@@ -10,6 +10,7 @@ include THIRD_PARTY_NOTICES.md
 global-exclude __pycache__ *.py[cod]
 include AGENTS.md databuild.py
 recursive-include tools *.py
+recursive-include tests *.py
 recursive-include docs *.md *.png
 recursive-include packaging *.py *.sh *.ps1 *.txt
 recursive-include .github/workflows *.yml
@@ -18,3 +19,4 @@ prune build
 prune dist
 prune .git
 prune 软件著作权文档
+prune SoftwareCopyright

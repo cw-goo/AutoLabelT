@@ -44,10 +44,16 @@ Qt 资源由可重建的 `resources.rcc` 提供，替代数兆字节的内嵌 Py
 ```text
 python -m pytest -q tests
 python tools/check_release.py --check-index
-python -m pip wheel --no-deps --no-build-isolation --wheel-dir dist .
+python tools/build_distribution.py --output-dir dist --sdist
 python tools/check_distribution.py dist/autolabel-0.1.0-py3-none-any.whl
 ```
 
 `check_release.py` 为只读检查，检查路径、导入、必要资源、明显凭据模式及暂存区中的本地文件；它不能替代人工审查。`check_distribution.py` 将安装包与当前应用文件比较，并可通过 `--sdist` 同时检查源压缩包。
 
 当前软著说明书是清理前版本的本地材料快照，未纳入公开仓库；正式使用时应根据新的目录结构和入口同步更新。
+
+## 2026-11-09 构建与本地输出整理
+
+增量构建曾从根目录 `build/lib/` 带入已删除的旧图标。现使用 `tools/build_distribution.py` 在全新源码副本中构建；包检查增加“包内多余应用文件”检测，并由回归测试覆盖。Windows/Linux 分发脚本和 GitHub Actions 均切换到该入口。
+
+图标导出、界面预览和 README 检查脚本已纳入 `tools/`，避免仅保存在 Git 忽略目录中。历史安装测试环境、重复构建包与过时预览脚本按清单清理；软著资料和用户数据验证导出保留。目录用途及重建命令见 [本地输出说明](artifacts.md)。

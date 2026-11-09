@@ -22,8 +22,7 @@ def main():
         old_wheel.unlink()
 
     subprocess.run(
-        [sys.executable, "-m", "pip", "wheel", "--no-deps",
-         "--no-build-isolation", "--wheel-dir", str(stage), str(root)],
+        [sys.executable, str(root / "tools/build_distribution.py"), "--output-dir", str(stage)],
         check=True,
         cwd=root,
     )

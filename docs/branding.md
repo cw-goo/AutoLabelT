@@ -8,7 +8,9 @@ Logo 是独立的加粗艺术字母 **A**，采用啄木鸟仿生造型：冠羽
 - `autolabel/workbench/resources/resources.qrc`：通过 `images/icon.png` 与 `images/logo.png` 两个兼容别名引用主图，供独立工作台、设置页与模型菜单使用。
 - `autolabel/workbench/resources/images/icon.ico`、`icon.icns`：从主图导出的平台图标。
 
-更新主图或平台图标后，执行 `python tools/build_resources.py --rcc /path/to/rcc --lrelease /path/to/lrelease`，并将生成的 `resources.rcc` 一并提交。PNG 需同时包含在 `pyproject.toml` 和 `MANIFEST.in` 的资源规则中。
+更新主图后，执行 `python tools/export_brand_icons.py` 导出平台图标，再执行 `python tools/build_resources.py --rcc /path/to/rcc --lrelease /path/to/lrelease`，并将生成的 `resources.rcc` 一并提交。PNG 需同时包含在 `pyproject.toml` 和 `MANIFEST.in` 的资源规则中。
+
+执行 `python tools/verify_brand_ui.py` 检查浅色、深色工作台和不同尺寸的图标，图片输出到 `artifacts/branding/`，使用独立临时配置。执行 `python tools/review_readme.py` 检查 README 本地链接并生成网页预览。
 
 ## 设计来源与提示词
 
