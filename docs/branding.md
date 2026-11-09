@@ -1,6 +1,6 @@
 # AutoLabel 品牌标识
 
-Logo 仅保留优雅的艺术字母 **A** 与深海军蓝圆角底板，去掉取景框和播放标记。珍珠白笔画采用浅浮雕、柔和倒角与少量青色侧光，底板边缘圆润平滑。生成图的圆角外部保留透明度，可用于浅色和深色界面。
+Logo 是独立的加粗艺术字母 **A**，采用啄木鸟仿生造型：冠羽与直喙融入顶部，翼羽、颈部和尾羽构成字母笔画，羽毛横画连接两侧。红金冠羽搭配青绿、宝蓝渐变，以柔和的层叠羽片与立体高光呈现华丽质感。无底板、边框或背景，字母外部及内部留白均保持透明，可直接用于浅色和深色界面。
 
 ## 资源与引用
 
@@ -16,12 +16,11 @@ Logo 仅保留优雅的艺术字母 **A** 与深海军蓝圆角底板，去掉�
 
 ```text
 Use case: logo-brand.
-Asset type: final AutoLabel desktop application icon and GitHub README logo.
-Input image: the supplied current AutoLabel logo is the edit target and identity reference.
-Primary request: make this identity noticeably MORE MINIMAL, gently THREE-DIMENSIONAL, and SOFTER at every edge while keeping an elegant artistic capital "A".
-Simplify the composition to just one beautifully drawn A on the deep navy rounded-square tile. Remove all four turquoise corner brackets and remove the small amber play triangle. Simplify the A's long looping flourish into a shorter, clean flowing crossbar; keep a graceful slight italic, generous interior negative space and clearly recognizable A silhouette. Do not add any symbols or lettering.
-Material and depth: the A is a shallow sculpted satin ivory/pearl ribbon with softly rounded bevels, subtle thickness, delicate cool turquoise reflected light along one side, soft ambient contact shading and a restrained upper-left highlight. Elegant, quiet premium industrial design, softly rounded edges and smooth precise curves. No harsh sharp points, no chrome, no mirror reflections, no glitter, no exaggerated glass effects, no heavy extrusion.
-Background tile: deep midnight navy, softly pillowed squircle with a very gentle edge highlight and quiet smooth tonal shading. Rounded and tactile, not a hard flat slab. The letter remains the clear hero, with balanced breathing room, large enough to remain readable at 28 pixels.
-Composition: a single square icon viewed straight on, centered, tile nearly fills square canvas with only a tiny safe margin. Actual transparent background outside the rounded tile, preserving alpha; no surrounding colored canvas, no detached drop shadow.
-Constraints: a usable production asset, not a presentation mockup or scene, no grid of variants, no text other than the single capital A, no watermark. Smooth antialiased contours, strong small-size readability, restrained two-color palette of navy and pearl with subtle cyan reflected light.
+Asset type: production AutoLabel desktop app icon and README logo.
+Input image: current AutoLabel logo is the edit target, used only as the reference for the elegant capital A gesture.
+Primary request: remove the entire navy tile and ALL background. Create ONLY ONE thick artistic capital "A", with a biomimetic woodpecker form integrated into its letter anatomy and luxurious colorful plumage. The user wants a substantially bolder A, richer coloration, and a crested woodpecker-inspired silhouette.
+Letter anatomy: preserve an immediately readable uppercase A with two stout sweeping legs, a strong connecting crossbar, and a clearly open triangular counter. Make the strokes about 40 percent thicker and more substantial than the reference, with smooth rounded dimensional contours. The top apex subtly becomes a woodpecker's sleek crested head with a small dark eye and a distinctive straight pointed beak facing right. One A diagonal is formed by the sweeping folded wing, the other by the flowing neck/body into elegant tail-feather tips. The crossbar is a broad clean sweeping feather. The bird and letter must be ONE unified monogram, not a bird sitting on a letter, not a separate bird illustration. Prioritize the A's silhouette.
+Plumage: luminous emerald and peacock turquoise transitioning through deep sapphire and royal blue, with restrained amber-gold highlights and a vivid coral/scarlet woodpecker crest. Rich harmonious color gradients, distinctive and jewel-like rather than one-color ivory. Use a few broad layered feather shapes to suggest luxurious plumage, without dense tiny realistic feather texture.
+Style/material: polished contemporary biomorphic brand sculpture, shallow 2.5D feather layering, soft satin sheen, restrained sculpted highlights, smoothly rounded beveled edges, clean antialiasing, elegant and fluid. A commanding logo silhouette still legible at 28px. No angular jagged feather fringe, no hairy fine lines, no glossy plastic, no heavy outline.
+Composition: single centered standalone A monogram occupying around 84 percent of a square canvas, all crest/beak/tail tips fully inside with a small uniform safe margin. Genuinely transparent background with alpha everywhere outside the letter AND inside its triangular counter. No navy tile, no rounded square, no plaque, no circle, no frame, no background glow, no ground plane, no cast shadow, no branch, no scenery, no wordmark, no other text, no watermark, no mockup. Only the colorful thick woodpecker-inspired capital A.
 ```
