@@ -1,0 +1,20 @@
+recursive-include autolabel/workbench/configs *
+recursive-include autolabel/workbench/resources *
+recursive-include autolabel/assets *.svg
+recursive-include autolabel *.ui
+include autolabel/workbench/services/auto_labeling/osam/clip/bpe_simple_vocab_16e6.txt.gz
+recursive-include autolabel/workbench/services/auto_labeling/configs *.txt *.json
+recursive-include autolabel/workbench/services/auto_labeling/visualgd *.h *.cuh *.cpp *.cu
+include LICENSE
+include THIRD_PARTY_NOTICES.md
+global-exclude __pycache__ *.py[cod]
+include AGENTS.md databuild.py
+recursive-include tools *.py
+recursive-include docs *.md *.png
+recursive-include packaging *.py *.sh *.ps1 *.txt
+recursive-include .github/workflows *.yml
+prune artifacts
+prune build
+prune dist
+prune .git
+prune 软件著作权文档

@@ -1,0 +1,36 @@
+AutoLabel for Windows
+=====================
+
+Requirements: Windows 10/11 x64, Python 3.11 x64, internet access during
+installation, and enough free disk space for PyTorch and other dependencies.
+The installer creates a private virtual environment; administrator rights
+are not required.
+
+1. Extract the entire ZIP file to a normal folder.
+2. In PowerShell, open the extracted AutoLabel-* folder.
+3. Run: powershell -ExecutionPolicy Bypass -File .\install.ps1
+4. Open a new PowerShell or Command Prompt window and run: autolabel
+   You can also use the Start menu shortcut or the installed AutoLabel.cmd.
+   No Python command or environment activation is needed after installation.
+
+The installer registers autolabel.exe in %USERPROFILE%\.local\bin and adds that
+directory to your user PATH if needed. It preserves your existing PATH entries.
+
+If Python 3.11 is not on PATH, add:
+  -Python "C:\path\to\Python311\python.exe"
+
+To install elsewhere, add:
+  -InstallDir "D:\Apps\AutoLabel"
+
+The app can label images immediately. Video detection needs a compatible
+local YOLO .pt model selected in the video panel. Model files and datasets
+are not included in this package. Optional model backends may download extra
+components when first selected. GPU acceleration requires a PyTorch build
+matching the target computer's drivers; the default installation can use CPU.
+
+To uninstall, remove the installation folder and the AutoLabel Start menu
+shortcut, plus %USERPROFILE%\.local\bin\autolabel.exe. Keep .local\bin on PATH
+if other commands use it. User annotation datasets and ~/.autolabelrc are stored separately.
+
+The bundled X-AnyLabeling code is licensed under GPL-3.0; see the included
+LICENSE.

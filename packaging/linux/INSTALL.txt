@@ -1,0 +1,30 @@
+AutoLabel for Linux
+===================
+
+Requirements: a graphical Linux desktop, Python 3.11 with venv and pip,
+internet access during installation, and enough disk space for PyTorch,
+Qt, and other dependencies. Package availability depends on CPU
+architecture and Linux distribution. No root privileges are needed.
+
+1. Extract the complete archive:
+   tar -xzf AutoLabel-0.1.0-Linux.tar.gz
+2. Enter the extracted AutoLabel-* directory.
+3. Run: bash install.sh
+4. Start: ~/.local/share/autolabel/AutoLabel
+
+To choose a Python executable or install directory, set environment
+variables before running the script, for example:
+  PYTHON=/path/to/python3.11 AUTOLABEL_INSTALL_DIR="$HOME/Apps/AutoLabel" bash install.sh
+
+The installer uses a private virtual environment and downloads Linux
+dependencies on the target computer. For NVIDIA CUDA or AMD ROCm, install
+the appropriate PyTorch build into that environment using the command from
+https://pytorch.org/get-started/locally/ for the target device.
+
+Image annotation can run without a detection model. Video detection needs
+a compatible local YOLO .pt model selected in the video panel; weights and
+datasets are not included. A graphical session is required for the UI.
+
+To uninstall, remove the installation directory. Annotation datasets and
+~/.autolabelrc are stored separately. The bundled AutoLabel code is
+licensed under GPL-3.0; see LICENSE and THIRD_PARTY_NOTICES.md.
