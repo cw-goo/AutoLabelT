@@ -1,11 +1,11 @@
 # AutoLabel 品牌标识
 
-Logo 根据用户提供的蓝橙啄木鸟参考图重绘：橙色冠羽、蓝色鸟身、铜色枝干和两片绿叶构成艺术字母 **A**。调整了边缘衔接、渐变高光与画布留白，保留原图的主要造型。背景透明，可直接用于浅色和深色界面。
+Logo 使用用户桌面原图去除背景后的高保真 SVG 转换版：橙色冠羽、蓝色鸟身、铜色枝干和两片绿叶构成艺术字母 **A**。保留原图造型、配色及 1254 × 1254 画布和留白，不重新设计。背景透明，白色鸟头保留。
 
 ## 资源与引用
 
-- [SVG 矢量主图](../autolabel/assets/logo.svg)：由贝塞尔路径、圆形和渐变组成，供 README、工具栏、窗口和设置页使用；无嵌入位图，可直接编辑、缩放。
-- [PNG 导出版](../autolabel/assets/logo.png)：从 SVG 渲染的 1024 × 1024 透明图片，供兼容位图的入口使用。
+- [SVG 矢量主图](../autolabel/assets/logo.svg)：从桌面移入的原图转换版，保留其路径和颜色渐变，无嵌入位图。
+- [PNG 导出版](../autolabel/assets/logo.png)：从 SVG 渲染的 1024 × 1024 透明图片，供软件工具栏、窗口、设置页及 README 预览使用；README 中点击 Logo 可查看 SVG。
 - `autolabel/workbench/resources/resources.qrc`：通过 `images/icon.svg`、`images/logo.svg` 与原有 PNG 兼容别名引用资源。
 - `autolabel/workbench/resources/images/icon.ico`、`icon.icns`：从主图导出的平台图标。
 
@@ -15,6 +15,8 @@ Logo 根据用户提供的蓝橙啄木鸟参考图重绘：橙色冠羽、蓝色
 
 ## 编辑方式
 
-本版直接依据用户参考图进行矢量重绘。SVG 中的 `branch-a`、`woodpecker` 和 `crossbar-and-leaves` 分组分别控制枝干、鸟形、横画与绿叶；`defs` 中的命名渐变用于调整色彩及立体层次。
+本版直接转换用户原图，通过密集的路径与渐变保留原有颜色变化；没有按造型重新绘制，也没有裁切原图留白。复杂渐变使 SVG 文件较大，README 使用导出的 PNG 预览以减少加载量。
 
-可使用 Inkscape、Illustrator 等矢量编辑器打开主图。编辑时保留方形 `viewBox`、透明背景及足够留白，避免细化到小图标尺寸下无法辨认的装饰。
+导出工具先按 SVG 原生坐标网格渲染，再缩放成 PNG，避免 Qt 在小尺寸下直接渲染密集渐变路径时产生透明接缝和颜色偏淡。
+
+可使用 Inkscape、Illustrator 等矢量编辑器打开主图。更新兼容图片时只运行导出与资源构建工具，不修改主图的轮廓、配色和画布。

@@ -421,7 +421,7 @@ def main():
     else:
         app.setApplicationName(__appname__)
         app.setApplicationVersion(__version__)
-        app.setWindowIcon(new_icon("icon", "svg"))
+        app.setWindowIcon(new_icon("icon", "png"))
     if loaded_language:
         app.installTranslator(translator)
     else:

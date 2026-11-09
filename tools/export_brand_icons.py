@@ -2,6 +2,7 @@
 from pathlib import Path
 import argparse
 import os
+import math
 
 from PIL import Image
 
@@ -17,11 +18,17 @@ def render_svg(source, output, size):
     renderer = QtSvg.QSvgRenderer(str(source))
     if not renderer.isValid():
         raise ValueError(f"Invalid SVG logo: {source}")
-    image = QtGui.QImage(size, size, QtGui.QImage.Format.Format_ARGB32)
+    # Render at the SVG's native coordinate grid before scaling. This avoids
+    # translucent seams between tightly fitted colour-gradient paths in Qt.
+    native_size = max(1, math.ceil(max(renderer.viewBoxF().width(), renderer.viewBoxF().height())))
+    image = QtGui.QImage(native_size, native_size, QtGui.QImage.Format.Format_ARGB32)
     image.fill(QtCore.Qt.GlobalColor.transparent)
     painter = QtGui.QPainter(image)
     renderer.render(painter)
     painter.end()
+    if native_size != size:
+        image = image.scaled(size, size, QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                             QtCore.Qt.TransformationMode.SmoothTransformation)
     output.parent.mkdir(parents=True, exist_ok=True)
     if not image.save(str(output)):
         raise OSError(f"Cannot save rendered logo: {output}")

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="autolabel/assets/logo.svg" alt="AutoLabel 蓝橙啄木鸟 A 矢量 Logo" width="128" height="128" />
+  <a href="autolabel/assets/logo.svg"><img src="autolabel/assets/logo.png" alt="AutoLabel 蓝橙啄木鸟 A Logo（点击查看 SVG）" width="128" height="128" /></a>
   <h1>AutoLabel</h1>
   <p><strong>从视频素材，到可复核的训练数据集。</strong></p>
   <p>视频动态采样 · AI 辅助标注 · 人工复核 · YOLO 数据集构建</p>

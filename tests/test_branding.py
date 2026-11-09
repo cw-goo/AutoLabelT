@@ -3,6 +3,23 @@
 from pathlib import Path
 
 
+def test_svg_export_keeps_adjacent_colour_shapes_opaque(tmp_path):
+    from PyQt6 import QtGui
+    from tools.export_brand_icons import render_svg
+
+    source = tmp_path / "strips.svg"
+    source.write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+        + ''.join(f'<path d="M0 {y}h32v1H0Z" fill="rgb(0,{128+y},220)"/>'
+                  for y in range(32)) + '</svg>', encoding="utf-8")
+    output = tmp_path / "small.png"
+    render_svg(source, output, 13)
+    image = QtGui.QImage(str(output))
+    assert image.size().width() == image.size().height() == 13
+    assert all(image.pixelColor(x, y).alpha() == 255
+               for x in range(13) for y in range(13))
+
+
 def test_branded_banner_has_no_upstream_links():
     from autolabel.branding import startup_banner
 
