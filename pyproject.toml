@@ -45,7 +45,7 @@ include = ["autolabel*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.txt", "*.json", "*.yaml", "*.yml", "*.gz", "*.h", "*.cuh", "*.cpp", "*.cu"]
-autolabel = ["assets/*.svg"]
+autolabel = ["assets/*.svg", "assets/*.png"]
 "autolabel.workbench" = ["configs/*.yaml", "configs/auto_labeling/*.yaml", "resources/*.rcc", "resources/images/*", "resources/translations/*", "**/*.ui", "services/auto_labeling/osam/clip/*.gz"]
 
 [tool.pytest.ini_options]

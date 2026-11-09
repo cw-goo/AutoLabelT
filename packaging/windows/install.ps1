@@ -27,7 +27,7 @@ if (-not (Test-Path -LiteralPath $venvPython)) {
 }
 & $venvPython -m pip install --upgrade $wheel.FullName
 if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed; check network access and disk space" }
-& $venvPython -c "import autolabel.workbench, PyQt6, cv2, torch, ultralytics; from importlib.resources import files; assert files('autolabel').joinpath('assets/logo.svg').is_file(); assert files('autolabel.workbench').joinpath('configs/autolabel_config.yaml').is_file(); from autolabel.workbench.resources import resources"
+& $venvPython -c "import autolabel.workbench, PyQt6, cv2, torch, ultralytics; from importlib.resources import files; assert files('autolabel').joinpath('assets/logo.png').is_file(); assert files('autolabel.workbench').joinpath('configs/autolabel_config.yaml').is_file(); from autolabel.workbench.resources import resources"
 if ($LASTEXITCODE -ne 0) { throw "Installation verification failed" }
 
 & (Join-Path $PSScriptRoot "register-command.ps1") -Python $venvPython

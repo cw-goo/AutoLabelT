@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCAL_DIRECTORIES = {".git", "artifacts", "build", "dist", ".venv", "venv", "__pycache__",
-                     ".pytest_cache", "软件著作权文档", "datasets", "dataset", "data", "outputs",
+                     ".pytest_cache", "软件著作权文档", "SoftwareCopyright", "datasets", "dataset", "data", "outputs",
                      "runs", "logs", "weights", "checkpoints", "pretrained", "model_cache"}
 WEIGHT_SUFFIXES = {".pt", ".pth", ".onnx", ".engine", ".safetensors", ".ckpt", ".tflite", ".gguf"}
 
@@ -56,7 +56,7 @@ def main():
             for number, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
                 if secret.search(line):
                     errors.append(f"Possible credential: {relative}:{number} (value hidden)")
-    required = ["LICENSE", "THIRD_PARTY_NOTICES.md", "autolabel/assets/logo.svg",
+    required = ["LICENSE", "THIRD_PARTY_NOTICES.md", "autolabel/assets/logo.png",
                 "autolabel/workbench/configs/autolabel_config.yaml",
                 "autolabel/workbench/resources/resources.rcc", "docs/images/workbench.png"]
     errors.extend(f"Missing required file: {name}" for name in required if not (ROOT / name).is_file())

@@ -1,6 +1,6 @@
 recursive-include autolabel/workbench/configs *
 recursive-include autolabel/workbench/resources *
-recursive-include autolabel/assets *.svg
+recursive-include autolabel/assets *.svg *.png
 recursive-include autolabel *.ui
 include autolabel/workbench/services/auto_labeling/osam/clip/bpe_simple_vocab_16e6.txt.gz
 recursive-include autolabel/workbench/services/auto_labeling/configs *.txt *.json

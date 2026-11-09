@@ -29,6 +29,13 @@ def test_packaged_qt_resources_and_translations_load():
     assert files("autolabel.workbench").joinpath("configs/autolabel_config.yaml").is_file()
     assert files("autolabel.workbench").joinpath("resources/resources.rcc").is_file()
     assert QtCore.QFile.exists(":/images/images/icon.png")
+    # Both workbench icon aliases must ship the current shared brand asset.
+    logo = files("autolabel").joinpath("assets/logo.png").read_bytes()
+    for name in ("icon", "logo"):
+        resource = QtCore.QFile(f":/images/images/{name}.png")
+        assert resource.open(QtCore.QIODevice.OpenModeFlag.ReadOnly)
+        assert bytes(resource.readAll()) == logo
+        resource.close()
     assert files("autolabel.workbench").joinpath("configs/models.yaml").is_file()
     translator = QtCore.QTranslator()
     assert translator.load(":/languages/translations/zh_CN.qm")

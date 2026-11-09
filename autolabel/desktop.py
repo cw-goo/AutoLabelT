@@ -15,7 +15,7 @@ from .appearance import SoftButtonMotion
 
 
 def brand_icon():
-    return QtGui.QIcon(str(Path(__file__).parent / "assets" / "logo.svg"))
+    return QtGui.QIcon(str(Path(__file__).parent / "assets" / "logo.png"))
 
 
 class AutoLabelMainWindow(MainWindow):
