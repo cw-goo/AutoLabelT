@@ -1,6 +1,6 @@
 # AutoLabel 品牌标识
 
-Logo 以带书写感的艺术字母 **A** 为主体，沿用深海军蓝底色、青色取景框和琥珀色播放标记。生成图的圆角外部保留透明度，可用于浅色和深色界面。
+Logo 仅保留优雅的艺术字母 **A** 与深海军蓝圆角底板，去掉取景框和播放标记。珍珠白笔画采用浅浮雕、柔和倒角与少量青色侧光，底板边缘圆润平滑。生成图的圆角外部保留透明度，可用于浅色和深色界面。
 
 ## 资源与引用
 
@@ -16,10 +16,12 @@ Logo 以带书写感的艺术字母 **A** 为主体，沿用深海军蓝底色�
 
 ```text
 Use case: logo-brand.
-Asset type: production application icon for AutoLabel, a video/image annotation desktop workbench; also GitHub README logo.
-Input image: the supplied icon is the edit target and identity reference.
-Primary request: redesign the central capital "A" into an elegant, artistic custom calligraphic monogram. An exquisite contemporary italic A, sculptural thick-to-thin strokes, graceful tapered terminals, confident sweeping crossbar, optical balance and beautiful negative space. Clearly and immediately readable as a capital A. Refined rather than ornate; strong silhouette at 28 pixels.
-Preserve the established deep navy rounded-square tile, luminous turquoise/cyan annotation-frame corner motif and ivory monogram palette. Refine the four framing corners to be thinner and more restrained so the A is the hero. Use a very small warm amber accent integrated tastefully into the sweeping crossbar, recalling the original video-play accent without obscuring the letter.
-Composition: a single centered icon, square canvas, icon tile almost fills the canvas with only a tiny safe margin, balanced breathing room inside. Transparent pixels outside the rounded tile; tile itself remains solid deep navy.
-Style: exceptionally clean flat vector-like brand artwork, precise smooth contours, subtle restrained color transitions only. No photograph, no mockup, no typography other than the A, no extra wordmark, no multiple options, no border around the canvas, no shadows, no bevel, no watermark. Keep important monogram strokes sufficiently substantial to survive small UI sizes.
+Asset type: final AutoLabel desktop application icon and GitHub README logo.
+Input image: the supplied current AutoLabel logo is the edit target and identity reference.
+Primary request: make this identity noticeably MORE MINIMAL, gently THREE-DIMENSIONAL, and SOFTER at every edge while keeping an elegant artistic capital "A".
+Simplify the composition to just one beautifully drawn A on the deep navy rounded-square tile. Remove all four turquoise corner brackets and remove the small amber play triangle. Simplify the A's long looping flourish into a shorter, clean flowing crossbar; keep a graceful slight italic, generous interior negative space and clearly recognizable A silhouette. Do not add any symbols or lettering.
+Material and depth: the A is a shallow sculpted satin ivory/pearl ribbon with softly rounded bevels, subtle thickness, delicate cool turquoise reflected light along one side, soft ambient contact shading and a restrained upper-left highlight. Elegant, quiet premium industrial design, softly rounded edges and smooth precise curves. No harsh sharp points, no chrome, no mirror reflections, no glitter, no exaggerated glass effects, no heavy extrusion.
+Background tile: deep midnight navy, softly pillowed squircle with a very gentle edge highlight and quiet smooth tonal shading. Rounded and tactile, not a hard flat slab. The letter remains the clear hero, with balanced breathing room, large enough to remain readable at 28 pixels.
+Composition: a single square icon viewed straight on, centered, tile nearly fills square canvas with only a tiny safe margin. Actual transparent background outside the rounded tile, preserving alpha; no surrounding colored canvas, no detached drop shadow.
+Constraints: a usable production asset, not a presentation mockup or scene, no grid of variants, no text other than the single capital A, no watermark. Smooth antialiased contours, strong small-size readability, restrained two-color palette of navy and pearl with subtle cyan reflected light.
 ```
