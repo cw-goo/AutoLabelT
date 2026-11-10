@@ -5,11 +5,38 @@ import sys
 import tempfile
 from pathlib import Path
 
+import psutil
 from PyQt6 import QtCore
 
 from .adapters import create_detector
 from .downloader import download_model, mark_model_ready, model_path
 from .registry import get_model
+
+
+def _stop_install_process(process):
+    # Windows venv launchers spawn an interpreter that inherits the log handle.
+    # Stop and reap the entire tree before closing/removing the log directory.
+    try:
+        parent = psutil.Process(process.pid)
+        processes = [parent, *parent.children(recursive=True)]
+    except psutil.NoSuchProcess:
+        process.wait()
+        return
+    for child in processes:
+        try:
+            child.terminate()
+        except psutil.NoSuchProcess:
+            pass
+    _, alive = psutil.wait_procs(processes, timeout=3)
+    for child in alive:
+        try:
+            child.kill()
+        except psutil.NoSuchProcess:
+            pass
+    _, alive = psutil.wait_procs(alive, timeout=3)
+    if alive:
+        raise TimeoutError("Model installer processes did not exit")
+    process.wait()
 
 
 class ModelWorker(QtCore.QThread):
@@ -117,12 +144,7 @@ class ModelWorker(QtCore.QThread):
                             break
                 finally:
                     if process.poll() is None:
-                        process.terminate()
-                        try:
-                            process.wait(timeout=3)
-                        except subprocess.TimeoutExpired:
-                            process.kill()
-                            process.wait()
+                        _stop_install_process(process)
                     output.close()
             self._check_cancelled()
             if status:

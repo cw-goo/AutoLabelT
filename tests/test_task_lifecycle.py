@@ -6,6 +6,7 @@ import threading
 import time
 from types import SimpleNamespace
 
+import psutil
 import pytest
 
 
@@ -69,23 +70,36 @@ def test_silent_installer_can_be_cancelled_without_stdout(monkeypatch, tmp_path)
     worker = module.ModelWorker("install_runtime", "yolo26_n")
     original_popen = subprocess.Popen
     children = []
+    interpreters = []
     marker = tmp_path / "started"
 
     def spawn(command, **kwargs):
         child = original_popen([sys.executable, "-c",
-                                "import pathlib,sys,time; pathlib.Path(sys.argv[1]).touch(); time.sleep(60)",
+                                "import os,pathlib,sys,time; "
+                                "pathlib.Path(sys.argv[1]).write_text(str(os.getpid())); time.sleep(60)",
                                 str(marker)], **kwargs)
         children.append(child)
         return child
 
     monkeypatch.setattr(module.subprocess, "Popen", spawn)
-    timer = threading.Timer(0.5, worker.cancel)
+
+    def cancel_when_started():
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            if marker.exists() and marker.read_text():
+                interpreters.append(psutil.Process(int(marker.read_text())))
+                break
+            time.sleep(0.01)
+        worker.cancel()
+
+    timer = threading.Timer(0.05, cancel_when_started)
     timer.start()
     start = time.monotonic()
     try:
         with pytest.raises(InterruptedError):
             worker._install_runtime()
         assert children and all(child.poll() is not None for child in children)
+        assert interpreters and all(not child.is_running() for child in interpreters)
         assert time.monotonic() - start < 8
     finally:
         timer.cancel()
@@ -94,6 +108,10 @@ def test_silent_installer_can_be_cancelled_without_stdout(monkeypatch, tmp_path)
             if child.poll() is None:
                 child.kill()
                 child.wait()
+        for child in interpreters:
+            if child.is_running():
+                child.kill()
+                child.wait(timeout=3)
 
 
 def test_close_keeps_event_loop_alive_until_worker_finishes(application, monkeypatch):
