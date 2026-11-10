@@ -6,6 +6,20 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+function Get-LauncherHash([string]$Path) {
+    # Get-FileHash may be unavailable when Windows PowerShell inherits a pwsh module path.
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    $stream = $null
+    try {
+        $stream = [IO.File]::OpenRead($Path)
+        return [Convert]::ToBase64String($algorithm.ComputeHash($stream))
+    } finally {
+        if ($null -ne $stream) { $stream.Dispose() }
+        $algorithm.Dispose()
+    }
+}
+
 $probe = @'
 import json
 import sys
@@ -38,8 +52,8 @@ $commandPath = Join-Path $CommandDir "autolabel.exe"
 if ($commandPath -ne $installation.launcher) {
     $copyRequired = -not (Test-Path -LiteralPath $commandPath)
     if (-not $copyRequired) {
-        $copyRequired = (Get-FileHash -LiteralPath $commandPath).Hash -ne
-                        (Get-FileHash -LiteralPath $installation.launcher).Hash
+        $copyRequired = (Get-LauncherHash $commandPath) -ne
+                        (Get-LauncherHash $installation.launcher)
     }
     if ($copyRequired) {
         Copy-Item -LiteralPath $installation.launcher -Destination $commandPath -Force

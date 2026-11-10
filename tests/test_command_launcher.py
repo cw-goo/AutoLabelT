@@ -12,13 +12,26 @@ pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows command
 REPO = Path(__file__).resolve().parents[1]
 
 
-def test_registered_command_runs_from_any_directory_and_registration_is_repeatable(tmp_path):
+@pytest.mark.parametrize("without_file_hash", [False, True])
+def test_registered_command_runs_from_any_directory_and_registration_is_repeatable(
+        tmp_path, without_file_hash):
     commands = tmp_path / "command directory with spaces"
     unrelated = tmp_path / "outside project"
     unrelated.mkdir()
+    script = REPO / "packaging" / "windows" / "register-command.ps1"
+    if without_file_hash:
+        wrapper = tmp_path / "without-file-hash.ps1"
+        escaped_script = str(script).replace("'", "''")
+        wrapper.write_text(
+            "ConvertFrom-Json '{}' | Out-Null\n"
+            "function Get-FileHash { throw 'Get-FileHash is unavailable in this host' }\n"
+            f"& '{escaped_script}' @args\n",
+            encoding="utf-8",
+        )
+        script = wrapper
     register = [
         "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-        str(REPO / "packaging" / "windows" / "register-command.ps1"),
+        str(script),
         "-Python", sys.executable, "-CommandDir", str(commands), "-NoPathUpdate",
     ]
     for _ in range(2):
@@ -26,6 +39,11 @@ def test_registered_command_runs_from_any_directory_and_registration_is_repeatab
         assert result.returncode == 0, (result.stdout + result.stderr).decode(errors="replace")
     command = commands / "autolabel.exe"
     assert command.is_file()
+    expected_launcher = command.read_bytes()
+    command.write_bytes(b"outdated launcher")
+    result = subprocess.run(register, cwd=unrelated, capture_output=True, timeout=60)
+    assert result.returncode == 0, (result.stdout + result.stderr).decode(errors="replace")
+    assert command.read_bytes() == expected_launcher
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)
     environment.pop("CONDA_PREFIX", None)
