@@ -14,6 +14,7 @@ from autolabel.workbench.views.labeling.logger import logger
 from autolabel.workbench.views.labeling.utils.opencv import qt_img_to_rgb_cv_img
 
 from .lru_cache import LRUCache
+from .engines.build_onnx_engine import create_onnx_session
 from .model import Model
 from .types import AutoLabelingResult
 
@@ -28,24 +29,17 @@ class GeCoONNX:
         self.box_threshold = box_threshold
 
         # Load models
-        providers = ort.get_available_providers()
 
         sess_options = ort.SessionOptions()
         sess_options.log_severity_level = 3
 
-        # Pop TensorRT Runtime due to crashing issues
-        # TODO: Add back when TensorRT backend is stable
-        providers = [p for p in providers if p != "TensorrtExecutionProvider"]
-
-        self.encoder_session = ort.InferenceSession(
+        self.encoder_session = create_onnx_session(
             encoder_model_path,
-            providers=providers,
             sess_options=sess_options,
         )
         self.encoder_input_name = self.encoder_session.get_inputs()[0].name
-        self.decoder_session = ort.InferenceSession(
+        self.decoder_session = create_onnx_session(
             decoder_model_path,
-            providers=providers,
             sess_options=sess_options,
         )
 

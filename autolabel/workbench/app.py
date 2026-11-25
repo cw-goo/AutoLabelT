@@ -21,6 +21,7 @@ from pathlib import Path
 import yaml
 from PyQt6 import QtCore, QtGui, QtWidgets
 
+from autolabel.branding import QT_APPLICATION_ID
 from autolabel.workbench.app_info import (
     __appname__,
     __version__,
@@ -411,16 +412,14 @@ def main():
     app.setStyleSheet(application_style)
     app.processEvents()
 
+    app.setApplicationName(QT_APPLICATION_ID)
+    app.setApplicationDisplayName(__appname__)
+    app.setApplicationVersion(launch_version)
     if integrated:
-        from autolabel.branding import APP_NAME
         from autolabel.desktop import brand_icon
 
-        app.setApplicationName(APP_NAME)
-        app.setApplicationVersion(launch_version)
         app.setWindowIcon(brand_icon())
     else:
-        app.setApplicationName(__appname__)
-        app.setApplicationVersion(__version__)
         app.setWindowIcon(new_icon("icon", "png"))
     if loaded_language:
         app.installTranslator(translator)

@@ -20,40 +20,50 @@ function Get-LauncherHash([string]$Path) {
     }
 }
 
+$CommandDir = [IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($CommandDir))
+$legacyCommand = Join-Path $CommandDir 'autolabel.exe'
 $probe = @'
 import json
 import sys
 import sysconfig
 from importlib.metadata import distribution
 from pathlib import Path
+from zipfile import BadZipFile, ZipFile
 
 if not (3, 11) <= sys.version_info[:2] < (3, 13):
-    raise SystemExit('AutoLabel requires Python 3.11 or 3.12')
+    raise SystemExit('AutoLabelT requires Python 3.11 or 3.12')
 entries = distribution('autolabel').entry_points
-if not any(e.group == 'console_scripts' and e.name == 'autolabel'
-           and e.value == 'autolabel.desktop:main' for e in entries):
-    raise SystemExit('Install AutoLabel in this Python environment first')
-launcher = Path(sysconfig.get_path('scripts')) / 'autolabel.exe'
-if not launcher.is_file():
-    raise SystemExit('AutoLabel launcher is missing; reinstall AutoLabel first')
-print(json.dumps({'python': sys.executable, 'launcher': str(launcher)}))
+launcher = Path(sysconfig.get_path('scripts')) / 'autolabelt.exe'
+if not launcher.is_file() or not any(
+    entry.group == 'console_scripts' and entry.name == 'autolabelt'
+    and entry.value == 'autolabel.desktop:main' for entry in entries
+):
+    raise SystemExit('The autolabelt launcher is missing. Reinstall AutoLabelT first.')
+
+# pip appends a ZIP containing the entry point to its Windows executable.
+try:
+    with ZipFile(sys.argv[1]) as legacy:
+        script = legacy.read('__main__.py')
+        remove_legacy = b'from autolabel.desktop import main' in script and b'sys.exit(main())' in script
+except (OSError, BadZipFile, KeyError, RuntimeError):
+    remove_legacy = False
+
+print(json.dumps({'python': sys.executable, 'launcher': str(launcher), 'remove_legacy': remove_legacy}))
 '@
-$result = & $Python -c $probe
-if ($LASTEXITCODE -ne 0) { throw "Could not find the installed AutoLabel command in $Python" }
+$result = & $Python -c $probe $legacyCommand
+if ($LASTEXITCODE -ne 0) { throw "Could not find the installed autolabelt command in $Python" }
 $installation = ($result -join "`n") | ConvertFrom-Json
 
 # Use pip's native console launcher. Its embedded interpreter path remains valid
 # when copied, including paths containing spaces or non-ASCII characters.
 & $installation.launcher version
-if ($LASTEXITCODE -ne 0) { throw "The AutoLabel command failed its startup check" }
-$CommandDir = [IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($CommandDir))
+if ($LASTEXITCODE -ne 0) { throw "The autolabelt command failed its startup check" }
 New-Item -ItemType Directory -Force -Path $CommandDir | Out-Null
-$commandPath = Join-Path $CommandDir "autolabel.exe"
+$commandPath = Join-Path $CommandDir 'autolabelt.exe'
 if ($commandPath -ne $installation.launcher) {
     $copyRequired = -not (Test-Path -LiteralPath $commandPath)
     if (-not $copyRequired) {
-        $copyRequired = (Get-LauncherHash $commandPath) -ne
-                        (Get-LauncherHash $installation.launcher)
+        $copyRequired = (Get-LauncherHash $commandPath) -ne (Get-LauncherHash $installation.launcher)
     }
     if ($copyRequired) {
         Copy-Item -LiteralPath $installation.launcher -Destination $commandPath -Force
@@ -61,6 +71,10 @@ if ($commandPath -ne $installation.launcher) {
 }
 & $commandPath version
 if ($LASTEXITCODE -ne 0) { throw "The registered command failed its startup check: $commandPath" }
+if ($installation.remove_legacy -and (Test-Path -LiteralPath $legacyCommand -PathType Leaf)) {
+    Remove-Item -LiteralPath $legacyCommand
+}
+Write-Host "Registered: $commandPath"
 
 function Test-CommandDirectoryInPath([string]$PathValue) {
     foreach ($entry in ($PathValue -split ';')) {
@@ -89,6 +103,5 @@ if (-not $NoPathUpdate) {
         $env:Path = $CommandDir + ';' + $env:Path
     }
 }
-Write-Host "Registered: $commandPath"
 Write-Host "Python environment: $($installation.python)"
-Write-Host "Open a new terminal and run: autolabel"
+Write-Host "Open a new terminal and run: autolabelt"

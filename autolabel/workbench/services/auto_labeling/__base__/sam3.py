@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 
+from ..engines.build_onnx_engine import create_onnx_session
+
 
 class SegmentAnything3ONNX:
     """Segmentation model using Segment Anything 3."""
@@ -198,16 +200,7 @@ class SAM3ImageDecoder:
         return outputs[2], outputs[1], outputs[0]
 
 
-def get_ort_providers(device: str) -> list[str]:
-    providers = ["CPUExecutionProvider"]
-    if device.lower() == "gpu":
-        providers = ["CUDAExecutionProvider"]
-    return providers
-
-
 def create_ort_session(path: str, device: str) -> ort.InferenceSession:
     sess_options = ort.SessionOptions()
     sess_options.log_severity_level = 3
-    return ort.InferenceSession(
-        path, providers=get_ort_providers(device), sess_options=sess_options
-    )
+    return create_onnx_session(path, device, sess_options=sess_options)

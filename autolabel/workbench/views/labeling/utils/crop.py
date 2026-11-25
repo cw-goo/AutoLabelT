@@ -199,7 +199,7 @@ def process_single_image(args):
 
             cropped_image = image[ymin:ymax, xmin:xmax]
             if cropped_image.size == 0:
-                logger.warning(f"Empty cropped image for {dst_file}")
+                logger.warning(f"Empty crop in {image_file} for label {label!r}")
                 continue
 
             dst_path.mkdir(parents=True, exist_ok=True)

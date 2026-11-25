@@ -262,3 +262,165 @@ def test_fresh_batch_distinguishes_failure_unknown_class_and_valid_negative_samp
                 state._batch_transaction = transaction
                 save_auto_labeling_result(state, str(image), output)
         assert target.read_bytes() == before
+
+
+def box(label, left, top, right, bottom):
+    return {
+        "label": label, "shape_type": "rectangle",
+        "points": [[left, top], [right, top], [right, bottom], [left, bottom]],
+        "flags": {}, "group_id": None, "description": None,
+    }
+
+
+def supplement_result(shapes):
+    from autolabel.workbench.services.auto_labeling.types import AutoLabelingResult
+
+    return AutoLabelingResult(
+        [SimpleNamespace(to_dict=lambda shape=shape: shape) for shape in shapes],
+        replace=True, description="模型说明", tags=["model"], flags={"new": True},
+    )
+
+
+def supplement_state(transaction, output_dir=None):
+    return SimpleNamespace(
+        output_dir=output_dir, _config={"store_data": False},
+        _batch_transaction=transaction, _batch_supplement_iou=0.6,
+        _batch_supplement_counts=[0, 0], _batch_supplement_labels={},
+        auto_labeling_widget=SimpleNamespace(model_manager=SimpleNamespace(
+            loaded_model_config={"type": "autolabel_local_yolo", "classes": ["hat", "hat2"]})),
+    )
+
+
+def test_video_dataset_supplement_preserves_annotations_until_yolo_sync(tmp_path):
+    from autolabel.annotation_bridge import prepare_review_dataset, sync_review_to_yolo
+    from autolabel.workbench.views.labeling.utils.batch import save_auto_labeling_result
+
+    images, labels, _ = import_dataset(tmp_path)
+    for path in images.glob("*.json"):
+        path.unlink()
+    prepare_review_dataset(tmp_path)
+    image = images / "one.jpg"
+    target = image.with_suffix(".json")
+    text_label = labels / "one.txt"
+    before_txt = text_label.read_bytes()
+    original = json.loads(target.read_text(encoding="utf-8"))
+    original.update(checked=True, description="人工复核", flags={"reviewed": True})
+    original["shapes"][0].update(score=0.95, group_id=7, attributes={"checked": True})
+    atomic_write_json(target, original, ensure_ascii=False)
+    new_box = box("hat2", 2, 3, 15, 18)
+    result = supplement_result([box("hat", 21, 10, 59, 30), new_box, box("hat2", 3, 3, 15, 18)])
+    with AnnotationTransaction([target]) as transaction:
+        state = supplement_state(transaction)
+        save_auto_labeling_result(state, str(image), result)
+        assert state._batch_supplement_counts == [1, 2]
+        transaction.commit()
+    current = json.loads(target.read_text(encoding="utf-8"))
+    assert current == {**original, "shapes": original["shapes"] + [new_box], "checked": False}
+    saved = target.read_bytes()
+    with AnnotationTransaction([target]) as transaction:
+        state = supplement_state(transaction)
+        save_auto_labeling_result(state, str(image), result)
+        assert state._batch_supplement_counts == [0, 3] and not transaction.staged
+        transaction.commit()
+    assert target.read_bytes() == saved
+    assert text_label.read_bytes() == before_txt
+    sync_review_to_yolo(tmp_path)
+    assert len(text_label.read_text(encoding="utf-8").splitlines()) == 2
+
+
+def test_supplement_reads_external_yolo_before_creating_json(tmp_path):
+    from autolabel.workbench.views.labeling.utils.batch import save_auto_labeling_result
+
+    images, labels, _ = import_dataset(tmp_path)
+    image = images / "one.jpg"
+    target = image.with_suffix(".json")
+    target.unlink()
+    before = (labels / "one.txt").read_bytes()
+    new_box = box("hat", 61, 10, 75, 28)
+    with AnnotationTransaction([target]) as transaction:
+        state = supplement_state(transaction)
+        save_auto_labeling_result(
+            state, str(image), supplement_result([box("hat2", 20, 10, 60, 30), new_box]))
+        assert state._batch_supplement_counts == [1, 1]
+        assert not target.exists()
+        transaction.commit()
+    result = json.loads(target.read_text(encoding="utf-8"))["shapes"]
+    assert [shape["label"] for shape in result] == ["hat2", "hat"]
+    assert result[1] == new_box
+    assert (labels / "one.txt").read_bytes() == before
+
+
+@pytest.mark.parametrize("interruption", ["cancel", "edit"])
+def test_supplement_retains_old_files_on_cancel_or_concurrent_edit(tmp_path, interruption):
+    from autolabel.workbench.views.labeling.utils.batch import save_auto_labeling_result
+
+    images, _, _ = import_dataset(tmp_path)
+    image = images / "one.jpg"
+    target = image.with_suffix(".json")
+    before = target.read_bytes()
+    with AnnotationTransaction([target]) as transaction:
+        state = supplement_state(transaction)
+        save_auto_labeling_result(state, str(image), supplement_result([box("hat", 2, 3, 15, 18)]))
+        if interruption == "edit":
+            before = b'{"shapes": [], "edit": "manual"}'
+            target.write_bytes(before)
+            with pytest.raises(OSError, match="原标注文件发生变化"):
+                transaction.commit()
+    assert target.read_bytes() == before
+    assert not list(images.glob(".autolabel_*"))
+
+
+def test_external_import_runs_supplement_from_batch_dialog(tmp_path, monkeypatch):
+    from PyQt6 import QtCore, QtTest, QtWidgets
+    from autolabel.desktop import AutoLabelMainWindow
+    from autolabel.workbench import config as settings
+    from autolabel.workbench.resources import resources
+    from autolabel.workbench.views.labeling.utils import batch
+    from autolabel.workbench.views.labeling.utils.upload import _import_yolo_annotations
+
+    images, labels, converter = import_dataset(tmp_path)
+    progress = SimpleNamespace(setMaximum=lambda _: None, setValue=lambda _: None, wasCanceled=lambda: False)
+    _import_yolo_annotations(converter, "hbb", str(images), str(labels), str(images), False, progress)
+    app = QtWidgets.QApplication.instance()
+    config = settings.get_config()
+    config["exif_scan_enabled"] = False
+    window = AutoLabelMainWindow(app, config=config)
+    view = window.labeling_widget.view
+    view.import_image_folder(str(images))
+    manager = view.auto_labeling_widget.model_manager
+    manager.loaded_model_config = {
+        "type": "autolabel_local_yolo", "classes": ["hat", "hat2"], "model": SimpleNamespace(),
+    }
+    result = supplement_result([box("hat2", 20, 10, 60, 30), box("hat", 2, 3, 15, 18)])
+    monkeypatch.setattr(manager, "predict_shapes", lambda *args, **kwargs: result)
+    monkeypatch.setattr(manager, "set_auto_labeling_reset_tracker", lambda: None)
+    messages = []
+    monkeypatch.setattr(batch, "Popup", lambda message, *args, **kwargs: SimpleNamespace(
+        show_popup=lambda *a, **kw: messages.append(message)))
+
+    def choose(dialog):
+        assert dialog.annotation_mode.currentData() == "supplement"
+        assert dialog.supplement_iou.value() == 0.6
+        assert dialog.from_input.value() == 1 and dialog.to_input.value() == 2
+        return QtWidgets.QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(batch.BatchRangeDialog, "exec", choose)
+    view.actions.run_all_images.setEnabled(True)
+    try:
+        view.actions.run_all_images.trigger()
+        for _ in range(250):
+            QtTest.QTest.qWait(20)
+            if not view._batch_processing_active:
+                break
+        assert not view._batch_processing_active
+        assert messages == ["补标完成 · 新增 2 个，跳过 2 个重复标注"]
+        for path in images.glob("*.json"):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            assert [shape["label"] for shape in data["shapes"]] == ["hat2", "hat"]
+    finally:
+        if thread := getattr(view, "_batch_thread", None):
+            thread.wait()
+        manager.loaded_model_config = None
+        window.deleteLater()
+        QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+        app.processEvents()

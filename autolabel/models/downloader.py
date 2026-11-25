@@ -8,6 +8,7 @@ import shutil
 import urllib.request
 
 from .registry import get_model
+from autolabel.workbench.views.labeling.annotation_io import atomic_write_json
 
 CLIP_URL = ("https://openaipublic.azureedge.net/clip/models/"
             "40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af/ViT-B-32.pt")
@@ -65,24 +66,30 @@ def model_download_state(model_id):
         return "missing"
     if not spec.weight_url and not spec.weight_name and not any(location.glob("*.safetensors")):
         return "missing"
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return "missing"
-    if manifest.get("model_id") != model_id or manifest.get("revision") != spec.revision:
+    manifest = _read_manifest(manifest_path, spec)
+    if manifest is None:
         return "missing"
     return "ready" if manifest.get("status") == "ready" else "downloaded"
 
 
+def _read_manifest(path, spec):
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if (isinstance(manifest, dict) and manifest.get("model_id") == spec.model_id
+            and manifest.get("revision") == spec.revision):
+        return manifest
+    return None
+
+
 def mark_model_ready(model_id, path):
-    spec = get_model(model_id)
     candidate = Path(path)
     manifest_path = (candidate.parent if candidate.is_file() else candidate) / "manifest.json"
-    if manifest_path.is_file():
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = _read_manifest(manifest_path, get_model(model_id))
+    if manifest is not None:
         manifest["status"] = "ready"
-        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2),
-                                 encoding="utf-8")
+        atomic_write_json(manifest_path, manifest, ensure_ascii=False, indent=2)
 
 
 def _sha256(path):
@@ -187,16 +194,15 @@ def download_model(model_id, progress=None, cancelled=None):
                 raise ValueError("授权仓库没有下载到预期模型权重；请确认访问权限与登录状态")
             digests = {path.name: _sha256(path) for path in weights}
             shutil.rmtree(temporary / ".hf_cache", ignore_errors=True)
-        final_path.parent.mkdir(parents=True, exist_ok=True)
-        if final_path.exists():
-            shutil.rmtree(final_path)
-        temporary.replace(final_path)
         manifest = {"model_id": spec.model_id, "title": spec.title,
                     "source": spec.source, "source_url": spec.source_url,
                     "license": spec.license, "revision": spec.revision,
                     "weights_sha256": digests, "status": "downloaded"}
-        (final_path / "manifest.json").write_text(
-            json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(temporary / "manifest.json", manifest, ensure_ascii=False, indent=2)
+        final_path.parent.mkdir(parents=True, exist_ok=True)
+        if final_path.exists():
+            shutil.rmtree(final_path)
+        temporary.replace(final_path)
         return final_path
     except Exception as error:
         shutil.rmtree(temporary, ignore_errors=True)

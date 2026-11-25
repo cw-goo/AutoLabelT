@@ -4,6 +4,15 @@ import pytest
 from autolabel.annotations import read_labels, write_labels
 
 
+def test_required_label_distinguishes_missing_from_empty(tmp_path):
+    label = tmp_path / "frame.txt"
+    assert read_labels(label, 1) == []
+    with pytest.raises(FileNotFoundError):
+        read_labels(label, 1, allow_missing=False)
+    label.write_text("", encoding="utf-8")
+    assert read_labels(label, 1, allow_missing=False) == []
+
+
 def test_annotation_roundtrip_and_unknown_class(tmp_path):
     label = tmp_path / "one.txt"
     write_labels(label, [(0, 0.1, 0.2, 0.5, 0.9)])

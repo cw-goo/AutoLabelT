@@ -3,11 +3,15 @@ from __future__ import annotations
 import importlib.metadata
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import queue
+import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import traceback
@@ -51,17 +55,29 @@ class EventLogStream:
     def __init__(self, event: str):
         self._event = event
         self._buffer = ""
+        self._progress = False
 
     def write(self, text: str) -> None:
-        self._buffer += text or ""
-        while "\n" in self._buffer:
-            line, self._buffer = self._buffer.split("\n", 1)
-            if line.strip():
-                emit(self._event, message=line.strip())
+        parts = re.split(r"(\r\n|\r|\n)", text or "")
+        for segment, ending in zip(parts[::2], parts[1::2]):
+            self._buffer += segment
+            self.flush()
+            if ending == "\r":
+                self._progress = True
+            elif self._progress:
+                emit(self._event, message="", progress="finish")
+                self._progress = False
+        self._buffer += parts[-1]
 
     def flush(self) -> None:
-        if self._buffer.strip():
-            emit(self._event, message=self._buffer.strip())
+        if self._progress and self._buffer == "\033[K":
+            emit(self._event, message="", progress="finish")
+            self._progress = False
+        elif self._buffer.strip():
+            if self._progress:
+                emit(self._event, message=self._buffer.rstrip(), progress="update")
+            else:
+                emit(self._event, message=self._buffer.rstrip())
         self._buffer = ""
 
 
@@ -200,6 +216,8 @@ def validate_selected_device(torch, device) -> None:
         if tensor.item() != 2.0:
             raise RuntimeError("MPS device failed tensor validation")
         return
+    if isinstance(device, int) and device >= 0:
+        device = [device]
     if not isinstance(device, list):
         return
     if not torch.cuda.is_available() or torch.cuda.device_count() <= 0:
@@ -222,8 +240,51 @@ def configure_weights_directory(weights_directory: str) -> None:
     settings.update({"weights_dir": weights_directory})
 
 
+def attach_training_events(model, send):
+    """Publish structured progress without scraping terminal progress bars."""
+    reported_epoch = None
+
+    def epoch_start(trainer):
+        device = str(getattr(trainer, "device", ""))
+        memory = None
+        if device.startswith("cuda"):
+            import torch
+            memory = torch.cuda.memory_reserved(trainer.device) / 1024 ** 3
+        send("training_progress", epoch=int(trainer.epoch) + 1,
+             total_epochs=int(trainer.epochs), save_dir=str(trainer.save_dir),
+             device=device, gpu_reserved_gb=memory)
+
+    def epoch_end(trainer):
+        nonlocal reported_epoch
+        epoch = int(trainer.epoch) + 1
+        if reported_epoch == epoch:
+            return
+        reported_epoch = epoch
+        metrics = dict(getattr(trainer, "metrics", {}) or {})
+        loss = getattr(trainer, "tloss", None)
+        if loss is not None:
+            metrics.update(trainer.label_loss_items(loss, prefix="train"))
+        values = {}
+        for key, value in metrics.items():
+            try:
+                value = float(value)
+                if math.isfinite(value):
+                    values[str(key)] = value
+            except (ValueError, TypeError):
+                continue
+        send("training_metrics", epoch=epoch, total_epochs=int(trainer.epochs), metrics=values,
+             save_dir=str(trainer.save_dir))
+
+    model.add_callback("on_train_epoch_start", epoch_start)
+    model.add_callback("on_fit_epoch_end", epoch_end)
+    model.add_callback("on_val_start", lambda validator: send("training_phase", phase="validation"))
+
+
 def run_train(payload: dict) -> None:
     train_args = dict(payload["args"])
+    family = train_args.pop("model_family", "yolo")
+    if family not in ("yolo", "rtdetr"):
+        raise ValueError("Unsupported model family")
     allowed = {
         "data",
         "model",
@@ -238,6 +299,7 @@ def run_train(payload: dict) -> None:
         "classes",
         "time",
         "patience",
+        "mosaic",
         "close_mosaic",
         "optimizer",
         "cos_lr",
@@ -256,6 +318,8 @@ def run_train(payload: dict) -> None:
         "degrees",
         "translate",
         "scale",
+        "fliplr",
+        "erasing",
         "shear",
         "perspective",
         "dropout",
@@ -271,6 +335,9 @@ def run_train(payload: dict) -> None:
         "plots",
         "save",
         "resume",
+        "pretrained",
+        "deterministic",
+        "seed",
         "cache",
     }
     unsupported = set(train_args) - allowed
@@ -280,13 +347,20 @@ def run_train(payload: dict) -> None:
         )
     import torch
 
+    if train_args.get("device") == "auto":
+        if torch.cuda.is_available():
+            train_args["device"] = [0]
+        elif torch.backends.mps.is_available():
+            train_args["device"] = "mps"
+        else:
+            train_args["device"] = "cpu"
     validate_selected_device(torch, train_args.get("device"))
     weights_directory = payload["paths"]["weights_directory"]
     configure_weights_directory(weights_directory)
     import matplotlib
 
     matplotlib.use("Agg")
-    from ultralytics import YOLO
+    from ultralytics import YOLO, RTDETR
 
     emit("training_started", total_epochs=train_args.get("epochs", 100))
     log_stream = EventLogStream("training_log")
@@ -294,7 +368,8 @@ def run_train(payload: dict) -> None:
     try:
         sys.stdout = log_stream
         sys.stderr = log_stream
-        model = YOLO(train_args.pop("model"))
+        model = (RTDETR if family == "rtdetr" else YOLO)(train_args.pop("model"))
+        attach_training_events(model, emit)
         train_args["verbose"] = False
         train_args["show"] = False
         model.train(**train_args)
@@ -304,10 +379,11 @@ def run_train(payload: dict) -> None:
     emit("training_completed", results="Training completed successfully")
 
 
-def missing_export_packages(export_format: str) -> list[str]:
+def missing_export_packages(export_format: str, *, simplify: bool = True) -> list[str]:
     return [
         requirement
         for module, requirement in EXPORT_DEPENDENCIES[export_format]
+        if simplify or export_format != "onnx" or module == "onnx"
         if importlib.util.find_spec(module) is None
     ]
 
@@ -383,7 +459,10 @@ def run_export(payload: dict) -> None:
     if not os.path.isfile(weights_path):
         raise FileNotFoundError(f"Model weights not found at: {weights_path}")
     emit("export_started", weights_path=weights_path, format=export_format)
-    missing = missing_export_packages(export_format)
+    destination = payload["paths"].get("destination")
+    if destination and export_format != "onnx":
+        raise ValueError("A destination is only supported for ONNX conversion")
+    missing = missing_export_packages(export_format, simplify=not destination)
     if missing and not payload["options"].get("auto_install_packages", True):
         command = f'"{sys.executable}" -m pip install ' + " ".join(missing)
         raise RuntimeError(
@@ -391,12 +470,12 @@ def run_export(payload: dict) -> None:
         )
     if missing:
         install_export_packages(missing)
-        remaining = missing_export_packages(export_format)
+        remaining = missing_export_packages(export_format, simplify=not destination)
         if remaining:
             raise RuntimeError(
                 f"Packages remain unavailable after installation: {', '.join(remaining)}"
             )
-    from ultralytics import YOLO
+    from ultralytics import RTDETR, YOLO
 
     emit("export_log", message=f"Loading model from {weights_path}")
     log_stream = EventLogStream("export_log")
@@ -404,7 +483,32 @@ def run_export(payload: dict) -> None:
     try:
         sys.stdout = log_stream
         sys.stderr = log_stream
-        result = YOLO(weights_path).export(format=export_format)
+        if destination:
+            import onnx
+
+            target = Path(destination)
+            if target.suffix.lower() != ".onnx":
+                raise ValueError(f"Expected an .onnx output path: {target}")
+            model_type = RTDETR if payload["args"].get("model_family") == "rtdetr" else YOLO
+            settings = {"format": "onnx", "device": "cpu", "simplify": False}
+            if payload["args"].get("imgsz"):
+                settings["imgsz"] = payload["args"]["imgsz"]
+            with tempfile.TemporaryDirectory(prefix="autolabel-onnx-") as staging:
+                copied_weights = Path(staging) / Path(weights_path).name
+                shutil.copyfile(weights_path, copied_weights)
+                result = Path(model_type(str(copied_weights)).export(**settings))
+                onnx.checker.check_model(str(result))
+                descriptor, filename = tempfile.mkstemp(prefix=".autolabel-onnx-", dir=target.parent)
+                pending = Path(filename)
+                try:
+                    with os.fdopen(descriptor, "wb") as output, result.open("rb") as source:
+                        shutil.copyfileobj(source, output)
+                    os.replace(pending, target)
+                finally:
+                    pending.unlink(missing_ok=True)
+            result = target
+        else:
+            result = YOLO(weights_path).export(format=export_format)
     finally:
         log_stream.flush()
         sys.stdout, sys.stderr = original_stdout, original_stderr
@@ -451,8 +555,8 @@ def load_payload(payload_path: str) -> dict:
             "options": {"auto_install_packages"},
         },
         "export": {
-            "args": {"format"},
-            "paths": {"data_directory", "weights_path"},
+            "args": {"format", "model_family", "imgsz"},
+            "paths": {"data_directory", "weights_path", "destination"},
             "options": {"auto_install_packages"},
         },
     }[action]

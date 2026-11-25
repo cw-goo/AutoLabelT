@@ -59,18 +59,12 @@ def inference(sess, img):
     Returns:
         outputs : Output of DWPose model.
     """
-    all_out = []
-    # build input
-    for i in range(len(img)):
-        input = img[i].transpose(2, 0, 1)
-        input = input[None, :, :, :]
-
-        outNames = sess.getUnconnectedOutLayersNames()
-        sess.setInput(input)
-        outputs = sess.forward(outNames)
-        all_out.append(outputs)
-
-    return all_out
+    input_name = sess.get_inputs()[0].name
+    results = []
+    for image in img:
+        blob = np.ascontiguousarray(image.transpose(2, 0, 1)[None], dtype=np.float32)
+        results.append(sess.run(None, {input_name: blob}))
+    return results
 
 
 def postprocess(

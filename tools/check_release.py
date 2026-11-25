@@ -3,6 +3,7 @@ from pathlib import Path
 import argparse
 import ast
 import json
+import os
 import re
 import subprocess
 import xml.etree.ElementTree as ET
@@ -26,7 +27,12 @@ def main():
     parser.add_argument("--check-index", action="store_true", help="Also reject local files in the Git index")
     args = parser.parse_args()
     errors = []
-    files = [p for p in ROOT.rglob("*") if p.is_file() and not local_path(p.relative_to(ROOT))]
+    files = []
+    for directory, subdirectories, filenames in os.walk(ROOT):
+        base = Path(directory)
+        subdirectories[:] = [name for name in subdirectories if not local_path((base / name).relative_to(ROOT))]
+        files.extend(path for path in (base / name for name in filenames)
+                     if not local_path(path.relative_to(ROOT)) and path.is_file())
     obsolete = re.compile(r"anylabel|xany", re.I)
     secret = re.compile(r"sk-[A-Za-z0-9_-]{24,}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")
     source_count = 0
@@ -67,9 +73,9 @@ def main():
     indexed_count = None
     if args.check_index:
         result = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, check=True, capture_output=True)
-        indexed = result.stdout.decode("utf-8").rstrip("\0").split("\0")
+        indexed = set(result.stdout.decode("utf-8").split("\0")) - {""}
         indexed_count = len(indexed)
-        for name in indexed:
+        for name in sorted(indexed):
             path = Path(name)
             if local_path(path) or path.suffix in WEIGHT_SUFFIXES:
                 errors.append(f"Local/generated file staged: {name}")

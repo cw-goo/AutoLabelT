@@ -1,6 +1,5 @@
 import json
 import os
-import signal
 import shutil
 import subprocess
 import sys
@@ -103,16 +102,23 @@ class TrainingManager:
         )
 
     def _run_training(self, payload_path: str) -> None:
+        terminal_event = None
+        process = None
+
+        def handle_event(event_type, data):
+            nonlocal terminal_event
+            if event_type in {"training_completed", "training_error", "training_stopped", "environment_error"}:
+                terminal_event = (event_type, data)
+            else:
+                self.notify_callbacks(event_type, data)
+
         try:
             if self.stop_event.is_set():
-                self.is_training = False
+                terminal_event = ("training_stopped", {})
                 return
             if not self.external_environment:
-                self.notify_callbacks(
-                    "training_started",
-                    {"total_epochs": self.total_epochs},
-                )
-            self.training_process = subprocess.Popen(
+                self.notify_callbacks("training_started", {"total_epochs": self.total_epochs})
+            process = self.training_process = subprocess.Popen(
                 build_training_worker_command(
                     payload_path,
                     python_executable=self.python_executable,
@@ -128,65 +134,43 @@ class TrainingManager:
                 preexec_fn=os.setsid if os.name != "nt" else None,
                 creationflags=get_worker_creation_flags(),
             )
-            terminal_event_seen = False
-            output_handler = (
-                parse_worker_output
-                if self.external_environment
-                else handle_training_worker_output
-            )
-            if self.training_process.stdout is None:
+            output_handler = parse_worker_output if self.external_environment else handle_training_worker_output
+            if process.stdout is None:
                 raise RuntimeError("Training process output is unavailable")
 
-            while True:
-                if self.stop_event.is_set():
-                    terminate_process_tree(self.training_process)
-                    self.is_training = False
-                    self.notify_callbacks("training_stopped", {})
-                    return
-
-                output = self.training_process.stdout.readline()
-                if self.stop_event.is_set():
-                    terminate_process_tree(self.training_process)
-                    self.is_training = False
-                    self.notify_callbacks("training_stopped", {})
-                    return
-                if output == "" and self.training_process.poll() is not None:
-                    break
+            while not self.stop_event.is_set():
+                output = process.stdout.readline()
                 if not output:
-                    continue
-                if output_handler(output, self.notify_callbacks):
-                    terminal_event_seen = True
+                    break
+                output_handler(output, handle_event)
 
-            return_code = self.training_process.poll()
-            self.is_training = False
-            if terminal_event_seen:
-                return
-            if return_code == 0:
-                self.notify_callbacks(
-                    "training_completed",
-                    {"results": "Training completed successfully"},
-                )
-            else:
-                self.notify_callbacks(
-                    "training_error",
-                    {
-                        "error": (
-                            f"Training process exited with code {return_code}"
-                        )
-                    },
-                )
-        except Exception as exc:
-            self.is_training = False
             if self.stop_event.is_set():
-                self.notify_callbacks("training_stopped", {})
-            else:
-                self.notify_callbacks("training_error", {"error": str(exc)})
+                terminate_process_tree(process)
+            return_code = process.wait()
+            if self.stop_event.is_set():
+                terminal_event = ("training_stopped", {})
+            elif return_code and (terminal_event is None or terminal_event[0] == "training_completed"):
+                terminal_event = ("training_error", {"error": f"Training process exited with code {return_code}"})
+            elif terminal_event is None:
+                terminal_event = ("training_completed", {"results": "Training completed successfully"})
+        except Exception as exc:
+            if process is not None:
+                terminate_process_tree(process)
+                process.wait()
+            terminal_event = ("training_stopped", {}) if self.stop_event.is_set() else (
+                "training_error", {"error": str(exc)}
+            )
         finally:
+            if process is not None and process.stdout is not None:
+                process.stdout.close()
             self.training_process = None
             try:
                 os.remove(payload_path)
             except OSError:
                 pass
+            self.is_training = False
+            if terminal_event is not None:
+                self.notify_callbacks(*terminal_event)
 
     def _save_settings_config(self, train_args: Dict) -> None:
         save_path = os.path.join(train_args["project"], train_args["name"])
@@ -197,7 +181,7 @@ class TrainingManager:
             and not os.path.exists(save_path)
         ):
             time.sleep(1)
-        if os.path.exists(save_path):
+        if os.path.exists(save_path) and os.path.isfile(get_settings_config_path()):
             shutil.copy2(get_settings_config_path(), save_file)
 
     def start_training(self, train_args: Dict) -> Tuple[bool, str]:
@@ -370,31 +354,6 @@ def handle_training_worker_output(output: str, notify_callbacks) -> bool:
     return event_type in {"training_completed", "training_error"}
 
 
-def kill_training_process_tree(training_process):
-    if training_process is None:
-        return
-
-    try:
-        if os.name == "nt":
-            subprocess.run(
-                [
-                    "taskkill",
-                    "/F",
-                    "/T",
-                    "/PID",
-                    str(training_process.pid),
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-            )
-            return
-
-        os.killpg(os.getpgid(training_process.pid), signal.SIGKILL)
-    except OSError:
-        pass
-
-
 def get_training_weights_dir() -> str:
     return os.path.join(get_trainer_root_dir(), "weights")
 
@@ -444,9 +403,13 @@ def run_training_worker_command(args):
 
         matplotlib.use("Agg")
 
-        from ultralytics import YOLO
+        from ultralytics import YOLO, RTDETR
+        from .worker import attach_training_events
 
-        model = YOLO(train_args.pop("model"))
+        family = train_args.pop("model_family", "yolo")
+        model = (RTDETR if family == "rtdetr" else YOLO)(train_args.pop("model"))
+        attach_training_events(model, lambda event, **data: emit_training_worker_event(
+            event, output_stream=old_stdout, **data))
         train_args["verbose"] = False
         train_args["show"] = False
         model.train(**train_args)

@@ -1,16 +1,16 @@
 """Application identity shared by the bundled workbench."""
-from autolabel.branding import APP_NAME, app_version
+from autolabel.branding import APP_NAME, APP_SUMMARY, LAUNCH_COMMAND, app_version
 
 __appname__ = APP_NAME
-__appdescription__ = "AutoLabel video and image annotation workbench"
+__appdescription__ = APP_SUMMARY
 __version__ = app_version()
 __url__ = "README.md"
 
-CLI_HELP_MSG = """AutoLabel
+CLI_HELP_MSG = f"""{APP_NAME}
 
-Launch: autolabel
-Commands: autolabel help | checks | version | config | convert
-Conversion help: autolabel convert --help
+Launch: {LAUNCH_COMMAND}
+Commands: {LAUNCH_COMMAND} help | checks | version | config | convert
+Conversion help: {LAUNCH_COMMAND} convert --help
 Documentation: README.md and docs/
 Third-party attribution: THIRD_PARTY_NOTICES.md
 """

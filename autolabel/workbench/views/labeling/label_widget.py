@@ -3091,13 +3091,15 @@ class LabelingWidget(LabelDialog):
             if self.output_dir:
                 label_file_without_path = osp.basename(label_file)
                 label_file = self.output_dir + "/" + label_file_without_path
-            self.save_labels(label_file)
-            if (
-                hasattr(self, "navigator_dialog")
-                and self.navigator_dialog.isVisible()
-            ):
-                self.update_navigator_shapes()
-            return
+            if self.save_labels(label_file):
+                if self.dirty:
+                    self.set_clean()
+                if (
+                    hasattr(self, "navigator_dialog")
+                    and self.navigator_dialog.isVisible()
+                ):
+                    self.update_navigator_shapes()
+                return
         self.dirty = True
         self.actions.save.setEnabled(True)
         if (
@@ -3494,6 +3496,10 @@ class LabelingWidget(LabelDialog):
 
     # Trainer
     def start_training(self, mode):
+        integrated = self.window()
+        if hasattr(integrated, "open_training_center"):
+            integrated.open_training_center()
+            return
         if mode != "ultralytics":
             return
 
@@ -3675,10 +3681,10 @@ class LabelingWidget(LabelDialog):
             utils.general.open_url(readme.as_uri())
         else:
             QMessageBox.information(
-                self, "AutoLabel 使用说明",
+                self, f"{__appname__} 使用说明",
                 "选择视频、输出目录和模型后开始构建。\n"
                 "在画布复核并保存标注，再点击“同步更新标签”。\n"
-                "完整说明见 AutoLabel 源码中的 README.md 和 docs/。",
+                "可在训练中心训练模型。完整说明见 README.md 和 docs/。",
             )
 
     def about(self):
@@ -6866,6 +6872,15 @@ class LabelingWidget(LabelDialog):
 
         label_file = self.get_label_file()
         return osp.exists(label_file)
+
+    def save_annotations_for_sync(self):
+        self.image_tags_widget.finish_for_image_change()
+        if not self.dirty:
+            return True
+        if not self.save_labels(self.get_label_file()):
+            return False
+        self.set_clean()
+        return True
 
     def may_continue(self):
         self.image_tags_widget.finish_for_image_change()

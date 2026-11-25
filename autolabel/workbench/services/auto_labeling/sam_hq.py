@@ -21,6 +21,7 @@ from autolabel.workbench.views.labeling.utils.opencv import (
 from autolabel.workbench.services.auto_labeling.utils import calculate_rotation_theta
 
 from .lru_cache import LRUCache
+from .engines.build_onnx_engine import create_onnx_session
 from .model import Model
 from .types import AutoLabelingResult
 from .__base__.clip import ChineseClipONNX
@@ -37,25 +38,16 @@ class SegmentAnythingONNX:
         self.decoder_model_path = decoder_model_path
 
         # Load models
-        self.providers = onnxruntime.get_available_providers()
-
-        # Pop TensorRT Runtime due to crashing issues
-        # TODO: Add back when TensorRT backend is stable
-        self.providers = [
-            p for p in self.providers if p != "TensorrtExecutionProvider"
-        ]
 
         sess_options = onnxruntime.SessionOptions()
         sess_options.log_severity_level = 3
-        self.encoder_session = onnxruntime.InferenceSession(
+        self.encoder_session = create_onnx_session(
             encoder_model_path,
-            providers=self.providers,
             sess_options=sess_options,
         )
         self.encoder_input_name = self.encoder_session.get_inputs()[0].name
-        self.decoder_session = onnxruntime.InferenceSession(
+        self.decoder_session = create_onnx_session(
             decoder_model_path,
-            providers=self.providers,
             sess_options=sess_options,
         )
 
@@ -92,8 +84,8 @@ class SegmentAnythingONNX:
         """
         # Lazy initialization
         if self.encoder_session is None:
-            self.encoder_session = onnxruntime.InferenceSession(
-                self.encoder_model_path, providers=self.providers
+            self.encoder_session = create_onnx_session(
+                self.encoder_model_path
             )
             self.encoder_input_name = self.encoder_session.get_inputs()[0].name
 

@@ -70,6 +70,7 @@ class AnnotationTransaction:
         self.staged = {}
         self.backups = {}
         self.installed = set()
+        self.source_versions = {}
         self.finished = False
 
     def __enter__(self):
@@ -119,8 +120,24 @@ class AnnotationTransaction:
             self.staged[path] = _temporary_path(path, ".tmp")
         return self.staged[path]
 
+    @staticmethod
+    def _file_version(path):
+        try:
+            stat = path.stat()
+        except FileNotFoundError:
+            return None
+        return stat.st_ino, stat.st_mtime_ns, stat.st_size
+
+    def watch(self, path):
+        path = Path(path).absolute()
+        if path not in self.source_versions:
+            self.source_versions[path] = self._file_version(path)
+
     def commit(self):
         try:
+            for path, version in self.source_versions.items():
+                if self._file_version(path) != version:
+                    raise OSError(f"补标期间原标注文件发生变化，请重新运行：{path}")
             for path, staged in self.staged.items():
                 self._backup(path)
                 os.replace(staged, path)

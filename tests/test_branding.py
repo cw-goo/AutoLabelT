@@ -1,4 +1,4 @@
-"""AutoLabel launcher identity and settings migration tests."""
+"""AutoLabelT launcher identity and settings compatibility tests."""
 
 from pathlib import Path
 
@@ -24,8 +24,8 @@ def test_branded_banner_has_no_upstream_links():
     from autolabel.branding import startup_banner
 
     banner = startup_banner()
-    assert "AutoLabel" in banner
-    assert "VIDEO  >  FRAMES  >  LABELS  >  DATASET" in banner
+    assert "AutoLabelT" in banner
+    assert "VIDEO  >  FRAMES  >  LABELS  >  DATASET  >  TRAIN" in banner
     assert "autolabel.com" not in banner
     assert "github.com/CVHub520" not in banner
     assert "\x1b[" not in banner
@@ -39,7 +39,7 @@ def test_banner_colors_only_in_interactive_mode():
     assert "\x1b[" in startup_banner(use_color=True)
     output = StringIO()
     write_startup_banner(output)
-    assert "AutoLabel" in output.getvalue()
+    assert "AutoLabelT" in output.getvalue()
     assert "\x1b[" not in output.getvalue()
 
 
@@ -66,9 +66,13 @@ def test_autolabel_cli_reports_own_version_and_config(monkeypatch, capsys, tmp_p
 
     monkeypatch.setenv("AUTOLABEL_INTEGRATED_WORKBENCH", "1")
     monkeypatch.setattr(config, "_work_directory", str(tmp_path))
-    monkeypatch.setattr(sys, "argv", ["autolabel", "version"])
+    monkeypatch.setattr(sys, "argv", ["autolabelt", "help"])
+    main()
+    help_text = capsys.readouterr().out
+    assert "AutoLabelT" in help_text and "autolabelt version" in help_text
+    monkeypatch.setattr(sys, "argv", ["autolabelt", "version"])
     main()
     assert "0.1.0" in capsys.readouterr().out
-    monkeypatch.setattr(sys, "argv", ["autolabel", "--work-dir", str(tmp_path), "config"])
+    monkeypatch.setattr(sys, "argv", ["autolabelt", "--work-dir", str(tmp_path), "config"])
     main()
     assert str(Path(tmp_path) / ".autolabelrc") in capsys.readouterr().out

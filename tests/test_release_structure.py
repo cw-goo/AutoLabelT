@@ -5,6 +5,8 @@ import ast
 import tomllib
 import xml.etree.ElementTree as ET
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,7 +43,9 @@ def test_packaged_qt_resources_and_translations_load():
     assert files("autolabel.workbench").joinpath("configs/models.yaml").is_file()
     translator = QtCore.QTranslator()
     assert translator.load(":/languages/translations/zh_CN.qm")
-    assert translator.translate("ExportFormatDialog", "Generate the model configuration and load it in AutoLabel") == "生成模型配置并在 AutoLabel 中加载"
+    assert translator.translate(
+        "ExportFormatDialog", "Generate the model configuration and load it in the workbench",
+    ) == "生成模型配置并在工作台中加载"
 
 
 def test_brand_logo_is_editable_vector_and_renders_at_icon_sizes():
@@ -64,13 +68,13 @@ def test_brand_logo_is_editable_vector_and_renders_at_icon_sizes():
         assert any(image.pixelColor(x, y).alpha() for x in range(size) for y in range(size))
 
 
-def test_all_launch_modes_use_autolabel_identity(monkeypatch):
+def test_all_launch_modes_display_autolabelt_and_keep_configuration(monkeypatch):
     from autolabel.workbench import app_info, config
     from autolabel.workbench.app import build_startup_banner
 
-    assert app_info.__appname__ == "AutoLabel"
+    assert app_info.__appname__ == "AutoLabelT"
     assert app_info.__version__ == "0.1.0"
-    assert "AutoLabel" in build_startup_banner(lambda text, color: text)
+    assert "AutoLabelT" in build_startup_banner(lambda text, color: text)
     monkeypatch.delenv("AUTOLABEL_INTEGRATED_WORKBENCH", raising=False)
     assert config.get_user_config_name() == ".autolabelrc"
     monkeypatch.setenv("AUTOLABEL_INTEGRATED_WORKBENCH", "1")
@@ -95,6 +99,7 @@ def test_default_application_update_checks_do_not_contact_upstream(monkeypatch):
 
 def test_distribution_uses_only_current_package_and_license_paths():
     metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert metadata["project"]["scripts"] == {"autolabelt": "autolabel.desktop:main"}
     assert metadata["tool"]["setuptools"]["packages"]["find"]["include"] == ["autolabel*"]
     assert metadata["project"]["license-files"] == ["LICENSE", "THIRD_PARTY_NOTICES.md"]
     assert (ROOT / "LICENSE").is_file()
@@ -102,3 +107,55 @@ def test_distribution_uses_only_current_package_and_license_paths():
     assert not (ROOT / "anylabeling").exists()
     assert not (ROOT / "autolabel/ui.py").exists()
     assert not (ROOT / "autolabel/review.py").exists()
+
+
+def test_packaged_onnx_runtime_loads_runs_and_reads_model_metadata(tmp_path):
+    import numpy as np
+    import onnx
+    from onnx import TensorProto, helper
+    from autolabel.workbench.services.auto_labeling.engines.build_onnx_engine import OnnxBaseModel
+
+    graph = helper.make_graph(
+        [helper.make_node("Identity", ["input"], ["output"])],
+        "inference_check",
+        [helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 2])],
+        [helper.make_tensor_value_info("output", TensorProto.FLOAT, [1, 2])],
+    )
+    model = helper.make_model(graph, ir_version=8, opset_imports=[helper.make_opsetid("", 13)])
+    helper.set_model_props(model, {"purpose": "image_model_runtime_check"})
+    weights = tmp_path / "inference_check.onnx"
+    onnx.save(model, weights)
+
+    engine = OnnxBaseModel(str(weights), device_type="cpu")
+    assert engine.providers == ["CPUExecutionProvider"]
+    image = np.array([[2, 3]], dtype=np.float32)
+    np.testing.assert_array_equal(engine.get_ort_inference(image), image)
+    assert engine.get_metadata_info("purpose") == "image_model_runtime_check"
+
+
+@pytest.mark.parametrize(
+    "device, cuda_available, use_cuda",
+    [("auto", True, True), ("auto", False, False), ("cpu", True, False)],
+)
+def test_onnx_session_prefers_cuda_and_respects_cpu(monkeypatch, device, cuda_available, use_cuda):
+    from autolabel.workbench.services.auto_labeling.engines import build_onnx_engine as engine
+
+    cuda = engine.CUDA_PROVIDER
+    cpu = engine.CPU_PROVIDER
+    available = ["TensorrtExecutionProvider", cuda, cpu] if cuda_available else [cpu]
+    calls = []
+    monkeypatch.setattr(engine, "get_preferred_device", lambda: "GPU")
+    monkeypatch.setattr(engine.ort, "get_available_providers", lambda: available)
+    monkeypatch.setattr(engine, "_preload_cuda_libraries", lambda: calls.append("preload"))
+
+    class Session:
+        def __init__(self, path, *, providers, sess_options):
+            calls.append(providers)
+            self.providers = providers
+
+        def get_providers(self):
+            return self.providers
+
+    monkeypatch.setattr(engine.ort, "InferenceSession", Session)
+    engine.create_onnx_session("model.onnx", device)
+    assert calls == (["preload", [cuda, cpu]] if use_cuda else [[cpu]])

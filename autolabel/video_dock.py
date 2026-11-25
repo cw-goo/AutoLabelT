@@ -1,6 +1,7 @@
 """Video dataset controls docked beside AutoLabel's native canvas."""
 
 from dataclasses import replace
+import math
 from pathlib import Path
 import time
 
@@ -8,13 +9,20 @@ from PyQt6 import QtCore, QtWidgets
 
 from autolabel.workbench.views.labeling.annotation_io import describe_file_error
 
-from .core import ProjectConfig, run_pipeline, video_info
-from .models.downloader import model_download_state, model_weight_path, release_session_model
+from .branding import APP_NAME
+from .core import DYNAMIC_JUMP_KEYS, ProjectConfig, video_info
+from .video_batch import (TARGET_COUNT_BUCKETS, analyze_videos, plan_signature, recommend_sampling,
+                          run_batch, video_paths)
+from .video_widgets import SummaryLabel, WorkflowCard
+from .models.downloader import model_download_state, model_weight_path
 from .models.registry import MODEL_REGISTRY, get_model
-from .model_square import ModelSquareDialog
+from .model_square import ModelSourceLink, ModelSquareDialog, SQUARE_MODEL_IDS
 from .models.worker import ModelWorker
 from .models.adapters import parse_prompts
-from .annotation_bridge import prepare_review_dataset, prepare_review_image, sync_review_to_yolo
+from .annotation_bridge import prepare_review_dataset, prepare_review_image, review_sync_location, sync_review_to_yolo
+
+
+DEFAULT_VIDEO_DOCK_WIDTH = 332
 
 
 PARAMETER_LABELS = {
@@ -35,17 +43,28 @@ PARAMETER_GROUPS = (
     ("检测设置", ("confidence", "image_size", "device")),
     ("画面筛选", ("min_pixel_height", "companion_min_height",
                "small_target_ratio", "reject_single_below")),
-    ("动态抽帧", ("idle_jump", "step_single", "step_small_group",
-               "step_large_group")),
+    ("动态抽帧", DYNAMIC_JUMP_KEYS),
 )
+
+
+def analysis_detail(report):
+    counts = report["target_counts"]
+    estimates = report["estimated_frames"]
+    lines = [f"{Path(report['path']).name} · {report['frames']:,} 帧 · 抽检 {report['probes']} 帧"]
+    for key, label in TARGET_COUNT_BUCKETS:
+        lines.append(f"{label} · 抽检 {counts[key]} 帧 · 全片估计 {estimates[key]:,} 帧")
+    lines.append(f"符合画面筛选条件 {report['rate']:.1%}")
+    if report["quota"]:
+        lines.append(f"分配 {report['quota']} 张 · 初始间隔 {report['recommended_jump']} 帧")
+    return "\n".join(lines)
 
 
 class ParameterDialog(QtWidgets.QDialog):
     def __init__(self, config, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("处理参数 · AutoLabel")
+        self.setWindowTitle(f"处理参数 · {APP_NAME}")
         self.setObjectName("parameterDialog")
-        self.resize(620, 660)
+        self.resize(620, 704)
         self.controls = {}
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(22, 20, 22, 18)
@@ -53,7 +72,7 @@ class ParameterDialog(QtWidgets.QDialog):
         heading = QtWidgets.QLabel("处理参数")
         heading.setObjectName("dialogHeading")
         layout.addWidget(heading)
-        hint = QtWidgets.QLabel("按已验证的运行基线调整，保存后应用于下次构建。")
+        hint = QtWidgets.QLabel("检查或调整参数后，点击“使用参数”确认。")
         hint.setObjectName("dialogHint")
         layout.addWidget(hint)
         scroll = QtWidgets.QScrollArea()
@@ -97,6 +116,8 @@ class ParameterDialog(QtWidgets.QDialog):
                     control.setSuffix(" px" if "height" in key else
                                       " 帧" if "jump" in key or "step" in key else "")
                 self.controls[key] = control
+                if key == "idle_jump":
+                    control.setToolTip("未检出合格目标或画面未通过筛选时，跳过的帧数。")
                 field = QtWidgets.QWidget()
                 field_layout = QtWidgets.QVBoxLayout(field)
                 field_layout.setContentsMargins(0, 0, 0, 0)
@@ -140,7 +161,7 @@ class ParameterDialog(QtWidgets.QDialog):
         footer.addStretch()
         cancel = QtWidgets.QPushButton("取消")
         cancel.clicked.connect(self.reject)
-        apply = QtWidgets.QPushButton("应用参数")
+        apply = QtWidgets.QPushButton("使用参数")
         apply.setProperty("role", "primary")
         apply.clicked.connect(self.accept)
         footer.addWidget(cancel)
@@ -165,26 +186,23 @@ class ModelLoadDialog(QtWidgets.QDialog):
     def __init__(self, dock):
         super().__init__(dock)
         self.dock = dock
-        self.setWindowTitle("模型加载 · AutoLabel")
+        self.setWindowTitle(f"视频模型加载 · {APP_NAME}")
         self.setObjectName("modelLoadDialog")
-        self.resize(900, 580)
+        self.resize(940, 700)
         root_layout = QtWidgets.QVBoxLayout(self)
         root_layout.setContentsMargins(24, 22, 24, 20)
         root_layout.setSpacing(14)
-        heading = QtWidgets.QLabel("模型中心")
+        heading = QtWidgets.QLabel("视频模型")
         heading.setObjectName("dialogHeading")
         root_layout.addWidget(heading)
-        hint = QtWidgets.QLabel("为图片标注或视频构建选择模型。两种任务分别保存自己的模型选择。")
+        hint = QtWidgets.QLabel("选择视频检测模型，设置类别并验证加载；图片模型在左侧图片标注中选择。")
         hint.setObjectName("dialogHint")
         root_layout.addWidget(hint)
-        self.tabs = QtWidgets.QTabWidget()
-        self.tabs.setObjectName("modelTaskTabs")
-        root_layout.addWidget(self.tabs, 1)
-        self.image_page = QtWidgets.QWidget()
-        self.tabs.addTab(self.image_page, "图片标注")
-        self._build_image_page()
+        view = getattr(getattr(dock.window, "labeling_widget", None), "view", None)
+        self.native_models = getattr(view, "auto_labeling_widget", None)
         video_page = QtWidgets.QWidget()
-        self.tabs.addTab(video_page, "视频数据集")
+        video_page.setObjectName("videoModelPage")
+        root_layout.addWidget(video_page, 1)
         layout = QtWidgets.QVBoxLayout(video_page)
         layout.setContentsMargins(4, 14, 4, 4)
         layout.setSpacing(12)
@@ -216,7 +234,7 @@ class ModelLoadDialog(QtWidgets.QDialog):
         cloud_title = QtWidgets.QLabel("模型广场")
         cloud_title.setObjectName("modelColumnTitle")
         cloud_layout.addWidget(cloud_title)
-        cloud_hint = QtWidgets.QLabel("与图片自动标注共用厂商和模型目录，选择后下载并测试加载。")
+        cloud_hint = QtWidgets.QLabel("浏览 Grounding DINO 与 SAM 系列模型。")
         cloud_hint.setWordWrap(True)
         cloud_layout.addWidget(cloud_hint)
         cloud_layout.addStretch()
@@ -231,31 +249,43 @@ class ModelLoadDialog(QtWidgets.QDialog):
         cloud_layout.addWidget(self.square_selection)
         self.model_square = ModelSquareDialog(self.native_models, self)
         columns.addWidget(cloud_card, 1)
-        layout.addLayout(columns, 1)
+        layout.addLayout(columns)
+        settings_card = QtWidgets.QFrame()
+        settings_card.setProperty("modelCard", True)
+        settings_layout = QtWidgets.QVBoxLayout(settings_card)
+        settings_layout.setContentsMargins(17, 15, 17, 15)
+        settings_layout.setSpacing(10)
+        self.settings_title = QtWidgets.QLabel()
+        self.settings_title.setObjectName("modelColumnTitle")
+        settings_layout.addWidget(self.settings_title)
         self.details = QtWidgets.QLabel()
-        self.details.setObjectName("modelDetails")
         self.details.setWordWrap(True)
-        layout.addWidget(self.details)
-        self.source_link = QtWidgets.QLabel()
-        self.source_link.setOpenExternalLinks(True)
-        layout.addWidget(self.source_link)
+        settings_layout.addWidget(self.details)
+        self.spec_metadata = QtWidgets.QLabel()
+        self.spec_metadata.setProperty("tone", "muted")
+        self.spec_metadata.setWordWrap(True)
+        settings_layout.addWidget(self.spec_metadata)
+        self.source_link = ModelSourceLink()
+        settings_layout.addWidget(self.source_link)
         prompt_row = QtWidgets.QHBoxLayout()
         prompt_label = QtWidgets.QLabel("检测类别  *")
         prompt_row.addWidget(prompt_label)
         prompt_row.addWidget(dock.prompts, 1)
-        layout.addLayout(prompt_row)
+        settings_layout.addLayout(prompt_row)
         self.prompt_hint = QtWidgets.QLabel()
         self.prompt_hint.setProperty("tone", "muted")
-        layout.addWidget(self.prompt_hint)
-        layout.addWidget(dock.trust_code)
+        self.prompt_hint.setWordWrap(True)
+        settings_layout.addWidget(self.prompt_hint)
+        settings_layout.addWidget(dock.trust_code)
         actions = QtWidgets.QHBoxLayout()
         for button in (dock.download_button, dock.test_button, dock.runtime_button,
                        dock.model_cancel_button):
             actions.addWidget(button)
         actions.addStretch()
-        layout.addLayout(actions)
-        layout.addWidget(dock.model_progress)
-        layout.addWidget(dock.model_status)
+        settings_layout.addLayout(actions)
+        settings_layout.addWidget(dock.model_progress)
+        settings_layout.addWidget(dock.model_status)
+        layout.addWidget(settings_card, 1)
         footer = QtWidgets.QHBoxLayout()
         footer.addStretch()
         confirm = QtWidgets.QPushButton("使用此模型")
@@ -264,119 +294,6 @@ class ModelLoadDialog(QtWidgets.QDialog):
         footer.addWidget(confirm)
         layout.addLayout(footer)
         self.select_model(dock.config.model_id)
-
-    def _build_image_page(self):
-        layout = QtWidgets.QVBoxLayout(self.image_page)
-        layout.setContentsMargins(4, 14, 4, 4)
-        layout.setSpacing(10)
-        hint = QtWidgets.QLabel("使用 AutoLabel 原生模型标注图片；可选预训练模型、本地 YOLO 权重或自定义 YAML 配置。")
-        hint.setWordWrap(True)
-        hint.setProperty("tone", "muted")
-        layout.addWidget(hint)
-        self.image_search = QtWidgets.QLineEdit()
-        self.image_search.setPlaceholderText("搜索模型名称或来源")
-        self.image_search.textChanged.connect(self._filter_image_models)
-        layout.addWidget(self.image_search)
-        self.image_models = QtWidgets.QTreeWidget()
-        self.image_models.setObjectName("imageModelTree")
-        self.image_models.setHeaderHidden(True)
-        self.image_models.itemDoubleClicked.connect(lambda *_: self.load_image_model())
-        layout.addWidget(self.image_models, 1)
-        self.image_status = QtWidgets.QLabel("选择模型后点击加载。")
-        self.image_status.setWordWrap(True)
-        self.image_status.setProperty("tone", "muted")
-        layout.addWidget(self.image_status)
-        actions = QtWidgets.QHBoxLayout()
-        local_weight = QtWidgets.QPushButton("导入本地 YOLO 权重")
-        local_weight.clicked.connect(self.import_image_weight)
-        actions.addWidget(local_weight)
-        custom = QtWidgets.QPushButton("导入自定义 YAML")
-        custom.clicked.connect(self.import_image_model)
-        actions.addWidget(custom)
-        actions.addStretch()
-        load = QtWidgets.QPushButton("加载到图片标注")
-        load.setProperty("role", "primary")
-        load.clicked.connect(self.load_image_model)
-        actions.addWidget(load)
-        layout.addLayout(actions)
-        view = getattr(getattr(self.dock.window, "labeling_widget", None), "view", None)
-        self.native_models = getattr(view, "auto_labeling_widget", None)
-        if self.native_models is None:
-            self.image_search.setEnabled(False)
-            load.setEnabled(False)
-            local_weight.setEnabled(False)
-            custom.setEnabled(False)
-            self.image_status.setText("图片模型仅在集成工作台中可用。")
-            return
-        self.native_models.model_manager.new_model_status.connect(self.image_status.setText)
-        self.refresh_image_models()
-
-    def refresh_image_models(self):
-        if self.native_models is None:
-            return
-        self.image_models.clear()
-        for provider, models in self.native_models.init_model_data().items():
-            group = QtWidgets.QTreeWidgetItem([provider])
-            self.image_models.addTopLevelItem(group)
-            for name, details in models.items():
-                if name in ("load_custom_model", "import_local_weight"):
-                    continue
-                item = QtWidgets.QTreeWidgetItem([details["display_name"]])
-                item.setData(0, QtCore.Qt.ItemDataRole.UserRole, (provider, name))
-                group.addChild(item)
-            group.setExpanded(provider == "Custom")
-        self._filter_image_models(self.image_search.text())
-
-    def _filter_image_models(self, query):
-        query = query.strip().casefold()
-        for index in range(self.image_models.topLevelItemCount()):
-            group = self.image_models.topLevelItem(index)
-            matches = 0
-            for child_index in range(group.childCount()):
-                child = group.child(child_index)
-                visible = query in group.text(0).casefold() or query in child.text(0).casefold()
-                child.setHidden(not visible)
-                matches += visible
-            group.setHidden(matches == 0)
-            if query and matches:
-                group.setExpanded(True)
-
-    def load_image_model(self):
-        if self.native_models is None:
-            return
-        item = self.image_models.currentItem()
-        if item is None or item.data(0, QtCore.Qt.ItemDataRole.UserRole) is None:
-            self.image_status.setText("请先选择一个图片模型。")
-            return
-        provider, name = item.data(0, QtCore.Qt.ItemDataRole.UserRole)
-        if self.native_models.isHidden():
-            self.dock.window.labeling_widget.view.toggle_auto_labeling_widget()
-        self.image_status.setText(f"正在加载 {item.text(0)}…")
-        self.native_models.on_model_selected(provider, name)
-
-    def import_image_model(self):
-        if self.native_models is None:
-            return
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "选择 AutoLabel 模型配置", "", "YAML 配置 (*.yaml *.yml)")
-        if path:
-            self.image_status.setText(f"正在加载 {Path(path).name}…")
-        if path and self.native_models.load_custom_model_config(path):
-            self.refresh_image_models()
-
-    def import_image_weight(self):
-        if self.native_models is None:
-            return
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "导入本地 YOLO 权重", "", "YOLO 权重 (*.pt)")
-        if not path:
-            return
-        try:
-            self.image_status.setText(f"正在加载 {Path(path).name}…")
-            if self.native_models.prompt_and_import_local_weight(path, self):
-                self.refresh_image_models()
-        except ValueError as error:
-            self.image_status.setText(str(error))
 
     def confirm_selection(self):
         try:
@@ -395,7 +312,7 @@ class ModelLoadDialog(QtWidgets.QDialog):
         self.model_square.refresh()
         if self.model_square.exec() == QtWidgets.QDialog.DialogCode.Accepted:
             model_id = self.model_square.selected_model_id
-            if model_id:
+            if model_id in SQUARE_MODEL_IDS:
                 self.dock.model_combo.setCurrentIndex(self.dock.model_combo.findData(model_id))
 
     def select_model(self, model_id):
@@ -407,10 +324,12 @@ class ModelLoadDialog(QtWidgets.QDialog):
         else:
             self.square_selection.setText("按厂商浏览可用模型")
         spec = get_model(model_id)
-        self.details.setText(f"{spec.description}  ·  {spec.source}  ·  {spec.license}  ·  {spec.revision}")
-        self.source_link.setText(
-            f'<a href="{spec.source_url}">查看模型来源与许可证 ↗</a>' if spec.source_url else
-            "本地权重的来源及许可证由用户自行确认")
+        self.settings_title.setText(f"{spec.title} · 模型设置")
+        self.details.setText(spec.description)
+        revision = spec.revision if len(spec.revision) <= 20 else spec.revision[:12] + "…"
+        self.spec_metadata.setText(f"{spec.source}  ·  {spec.license}  ·  {revision}")
+        self.spec_metadata.setToolTip(f"来源：{spec.source}\n许可证：{spec.license}\n版本：{spec.revision}")
+        self.source_link.set_source(spec.source_url)
         self.prompt_hint.setText(
             "当前本地 YOLO 基线只检测 person（类别 ID 0）。" if model_id == "local_yolo"
             else "COCO 预训练仅支持已有类别；开放词汇模型可输入新类别。"
@@ -423,10 +342,13 @@ class VideoPipelineWorker(QtCore.QThread):
     completed = QtCore.pyqtSignal(dict)
     failed = QtCore.pyqtSignal(str)
 
-    def __init__(self, config, parent=None):
+    def __init__(self, config, parent=None, analyze_only=False, plan=None, refresh_analysis=False):
         super().__init__(parent)
         self.config = config
         self._cancel = False
+        self.analyze_only = analyze_only
+        self.plan = plan
+        self.refresh_analysis = refresh_analysis
 
     def cancel(self):
         self._cancel = True
@@ -436,10 +358,17 @@ class VideoPipelineWorker(QtCore.QThread):
             def report(event):
                 if event.get("image"):
                     prepare_review_image(self.config.output_dir, event["image"])
+                if event.get("phase") == "plan":
+                    event = {**event, "signature": plan_signature(self.config)}
                 self.progress.emit(event)
 
-            result = run_pipeline(self.config, report,
-                                  lambda: self._cancel)
+            if self.analyze_only:
+                plan = analyze_videos(self.config, report, lambda: self._cancel)
+                result = {"analysis": True, "plan": plan, "cancelled": self._cancel,
+                          "signature": plan_signature(self.config)}
+            else:
+                result = run_batch(self.config, report, lambda: self._cancel, plan=self.plan,
+                                   refresh_analysis=self.refresh_analysis)
             # Each saved sample was already converted and checked by report().
             self.completed.emit(result)
         except Exception as error:
@@ -450,13 +379,18 @@ class SyncWorker(QtCore.QThread):
     completed = QtCore.pyqtSignal(dict)
     failed = QtCore.pyqtSignal(str)
 
-    def __init__(self, root, parent=None):
+    def __init__(self, root, classes_file, parent=None, *, active_annotation=None):
         super().__init__(parent)
         self.root = root
+        self.classes_file = classes_file
+        self.active_annotation = active_annotation
 
     def run(self):
         try:
-            self.completed.emit(sync_review_to_yolo(self.root, self.isInterruptionRequested))
+            self.completed.emit(sync_review_to_yolo(
+                self.root, self.isInterruptionRequested, classes_file=self.classes_file,
+                active_annotation=self.active_annotation,
+            ))
         except Exception as error:
             self.failed.emit(describe_file_error(error))
 
@@ -483,8 +417,10 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
         title_bar = QtWidgets.QWidget(self)
         title_bar.setFixedHeight(0)
         self.setTitleBarWidget(title_bar)
-        self.setMinimumWidth(340)
+        self.setMinimumWidth(318)
         self.window = window
+        self.collapsed = False
+        self._expanded_width = DEFAULT_VIDEO_DOCK_WIDTH
         self.config = ProjectConfig()
         self.local_model_path = self.config.model_path
         self.pipeline_worker = None
@@ -497,50 +433,64 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
         self.sync_worker = None
         self.prepare_worker = None
         self.live_review_dir = None
-        scroll = QtWidgets.QScrollArea()
-        scroll.setObjectName("videoDockScroll")
-        scroll.setWidgetResizable(True)
+        self.analysis_plan = None
+        self.analysis_signature = None
+        self.confirmed_signature = None
+        self._use_recommended_jumps = True
         content = QtWidgets.QWidget()
         content.setObjectName("videoDockContent")
         layout = QtWidgets.QVBoxLayout(content)
-        layout.setContentsMargins(14, 16, 14, 16)
-        layout.setSpacing(14)
+        layout.setContentsMargins(10, 5, 10, 5)
+        layout.setSpacing(12)
 
-        header = QtWidgets.QFrame()
-        header.setObjectName("workflowHeader")
-        header_layout = QtWidgets.QVBoxLayout(header)
-        header_layout.setContentsMargins(16, 14, 16, 14)
-        header_layout.setSpacing(3)
-        title = QtWidgets.QLabel("视频数据集")
-        title.setObjectName("workflowTitle")
-        subtitle = QtWidgets.QLabel("从视频到可复核的标注数据")
-        subtitle.setObjectName("workflowSubtitle")
-        steps = QtWidgets.QLabel("视频  →  检测  →  抽帧  →  复核")
-        steps.setObjectName("workflowSteps")
-        header_layout.addWidget(title)
-        header_layout.addWidget(subtitle)
-        header_layout.addSpacing(5)
-        header_layout.addWidget(steps)
-        layout.addWidget(header)
-
-        project = QtWidgets.QGroupBox("项目")
-        project_form = QtWidgets.QFormLayout(project)
-        self.video_button = QtWidgets.QPushButton("选择视频")
+        project = WorkflowCard("01", "素材队列", "添加 · 排序 · 输出")
+        project_form = QtWidgets.QFormLayout()
+        project_form.setContentsMargins(0, 0, 0, 0)
+        project_form.setSpacing(8)
+        project.body.addLayout(project_form)
+        project_form.setRowWrapPolicy(QtWidgets.QFormLayout.RowWrapPolicy.DontWrapRows)
+        self.video_button = QtWidgets.QPushButton("添加视频")
+        self.video_button.setToolTip("可以一次选择多个视频")
         self.video_button.clicked.connect(self.choose_video)
-        self.video_label = QtWidgets.QLabel("未选择")
-        self.video_label.setProperty("tone", "muted")
-        self.video_label.setWordWrap(True)
-        project_form.addRow(self.video_button, self.video_label)
+        self.video_label = SummaryLabel("未选择")
+        project.set_caption_widget(self.video_label)
+        self.video_queue = QtWidgets.QTreeWidget()
+        self.video_queue.setObjectName("videoQueue")
+        self.video_queue.setHeaderLabels(["视频 / 时长", "目标", "状态"])
+        self.video_queue.setRootIsDecorated(False)
+        self.video_queue.setMinimumHeight(62)
+        self.video_queue.setMaximumHeight(108)
+        self.video_queue.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
+                                       QtWidgets.QSizePolicy.Policy.Expanding)
+        self.video_queue.setAlternatingRowColors(True)
+        self.video_queue.setUniformRowHeights(True)
+        queue_header = self.video_queue.header()
+        queue_header.setStretchLastSection(False)
+        queue_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        queue_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        project_form.addRow(self.video_queue)
+        queue_actions = QtWidgets.QHBoxLayout()
+        queue_actions.setSpacing(7)
+        self.queue_up = QtWidgets.QPushButton("上移")
+        self.queue_down = QtWidgets.QPushButton("下移")
+        self.queue_remove = QtWidgets.QPushButton("移除")
+        self.queue_up.clicked.connect(lambda: self.move_video(-1))
+        self.queue_down.clicked.connect(lambda: self.move_video(1))
+        self.queue_remove.clicked.connect(self.remove_video)
+        for button in (self.queue_up, self.queue_down, self.queue_remove):
+            queue_actions.addWidget(button)
+        queue_actions.insertWidget(0, self.video_button, 2)
+        project_form.insertRow(0, queue_actions)
         self.output_button = QtWidgets.QPushButton("输出目录")
         self.output_button.clicked.connect(self.choose_output)
-        self.output_label = QtWidgets.QLabel("未选择")
-        self.output_label.setProperty("tone", "muted")
-        self.output_label.setWordWrap(True)
+        self.output_label = SummaryLabel("未选择")
         project_form.addRow(self.output_button, self.output_label)
-        layout.addWidget(project)
+        project_form.itemAt(project_form.rowCount() - 1, QtWidgets.QFormLayout.ItemRole.FieldRole).setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignVCenter)
+        layout.addWidget(project, 3)
 
-        model_card = QtWidgets.QGroupBox("检测模型")
-        model_layout = QtWidgets.QVBoxLayout(model_card)
+        model_card = WorkflowCard("02", "检测模型", "")
+        model_layout = model_card.body
         self.model_combo = QtWidgets.QComboBox()
         for model_id, spec in MODEL_REGISTRY.items():
             self.model_combo.addItem(spec.title, model_id)
@@ -554,8 +504,10 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
         self.weight_label.setProperty("tone", "muted")
         self.weight_label.setWordWrap(True)
         self.prompts = QtWidgets.QLineEdit("person")
+        self.prompts.textChanged.connect(self._invalidate_analysis)
         self.prompts.setPlaceholderText("类别：person, phone")
         self.trust_code = QtWidgets.QCheckBox("信任 Florence-2 固定版本模型代码")
+        self.trust_code.toggled.connect(self._invalidate_analysis)
         self.download_button = QtWidgets.QPushButton("下载")
         self.download_button.setProperty("role", "primary")
         self.download_button.clicked.connect(self.download_model)
@@ -576,23 +528,54 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
         self.model_button = QtWidgets.QPushButton("模型加载")
         self.model_button.setProperty("role", "primary")
         self.model_button.clicked.connect(self.open_model_dialog)
-        model_layout.addWidget(self.model_button)
-        self.model_summary = QtWidgets.QLabel()
-        self.model_summary.setProperty("tone", "muted")
-        self.model_summary.setWordWrap(True)
-        model_layout.addWidget(self.model_summary)
+        model_row = QtWidgets.QHBoxLayout()
+        model_row.setSpacing(6)
+        model_row.addStretch()
+        self.model_button.setMinimumWidth(160)
+        model_row.addWidget(self.model_button)
+        model_row.addStretch()
+        self.model_summary = SummaryLabel()
+        self.model_summary.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+        model_card.set_caption_widget(self.model_summary)
+        model_layout.addLayout(model_row)
         layout.addWidget(model_card)
 
-        parameter_card = QtWidgets.QGroupBox("处理参数")
-        parameter_layout = QtWidgets.QVBoxLayout(parameter_card)
+        parameter_card = WorkflowCard("03", "采样计划", "")
+        parameter_layout = parameter_card.body
         self.parameter_button = QtWidgets.QPushButton("调整参数")
         self.parameter_button.clicked.connect(self.edit_parameters)
-        parameter_layout.addWidget(self.parameter_button)
-        self.parameter_summary = QtWidgets.QLabel()
-        self.parameter_summary.setProperty("tone", "muted")
-        self.parameter_summary.setWordWrap(True)
-        parameter_layout.addWidget(self.parameter_summary)
+        parameter_row = QtWidgets.QHBoxLayout()
+        parameter_row.setSpacing(8)
+        parameter_row.addWidget(self.parameter_button)
+        self.parameter_summary = SummaryLabel()
+        parameter_row.addWidget(self.parameter_summary, 1)
+        parameter_layout.addLayout(parameter_row)
+        self.target_count = QtWidgets.QSpinBox()
+        self.target_count.setButtonSymbols(QtWidgets.QAbstractSpinBox.ButtonSymbols.NoButtons)
+        self.target_count.setRange(0, 1000000)
+        self.target_count.setToolTip("输出目录最终希望保留的图片总数。填写 0 可按动态步长扫描。")
+        self.target_count.valueChanged.connect(self._refresh_sampling_plan)
+        self.sample_gap = QtWidgets.QSpinBox()
+        self.sample_gap.setButtonSymbols(QtWidgets.QAbstractSpinBox.ButtonSymbols.NoButtons)
+        self.sample_gap.setRange(1, 1000000)
+        self.sample_gap.setValue(25)
+        self.sample_gap.setSuffix(" 帧")
+        self.sample_gap.setToolTip("指定图片数量时，同一视频保存图片之间至少间隔多少源帧。")
+        self.sample_gap.valueChanged.connect(self._refresh_sampling_plan)
+        target_form = QtWidgets.QHBoxLayout()
+        target_form.setSpacing(4)
+        target_form.addWidget(QtWidgets.QLabel("数据集图片数量"))
+        target_form.addWidget(self.target_count, 1)
+        target_form.addSpacing(4)
+        target_form.addWidget(QtWidgets.QLabel("最小间隔"))
+        target_form.addWidget(self.sample_gap, 1)
+        parameter_layout.addLayout(target_form)
+        self.analyze_button = QtWidgets.QPushButton("预分析并推荐")
+        self.analyze_button.clicked.connect(self.analyze)
+        self.analysis_summary = SummaryLabel("未预分析", lines=2)
         configuration_actions = QtWidgets.QHBoxLayout()
+        configuration_actions.setSpacing(8)
+        parameter_layout.addWidget(self.analyze_button)
         save_configuration = QtWidgets.QPushButton("保存配置")
         save_configuration.clicked.connect(self.save_config)
         load_configuration = QtWidgets.QPushButton("加载配置")
@@ -600,11 +583,39 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
         configuration_actions.addWidget(save_configuration)
         configuration_actions.addWidget(load_configuration)
         parameter_layout.addLayout(configuration_actions)
+        parameter_layout.addSpacing(3)
+        self.analysis_results = QtWidgets.QFrame()
+        self.analysis_results.setObjectName("samplingAnalysisResults")
+        self.analysis_results.setFixedHeight(118)
+        result_layout = QtWidgets.QVBoxLayout(self.analysis_results)
+        result_layout.setContentsMargins(5, 4, 5, 4)
+        result_layout.setSpacing(4)
+        result_layout.addWidget(self.analysis_summary, alignment=QtCore.Qt.AlignmentFlag.AlignTop)
+        self.sampling_plan_table = QtWidgets.QTreeWidget()
+        self.sampling_plan_table.setObjectName("samplingPlanTable")
+        self.sampling_plan_table.setAccessibleName("预分析采样参数")
+        self.sampling_plan_table.setHeaderLabels(["视频", "分配张数", "初始间隔"])
+        self.sampling_plan_table.setRootIsDecorated(False)
+        self.sampling_plan_table.setAlternatingRowColors(True)
+        self.sampling_plan_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.NoSelection)
+        self.sampling_plan_table.setUniformRowHeights(True)
+        self.sampling_plan_table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.sampling_plan_table.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.sampling_plan_table.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
+                                              QtWidgets.QSizePolicy.Policy.Ignored)
+        header = self.sampling_plan_table.header()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        result_layout.addWidget(self.sampling_plan_table, 1)
+        self.sampling_plan_table.hide()
+        parameter_layout.addWidget(self.analysis_results)
         layout.addWidget(parameter_card)
 
-        run_card = QtWidgets.QGroupBox("构建与复核")
-        run_layout = QtWidgets.QVBoxLayout(run_card)
+        run_card = WorkflowCard("04", "构建与复核", "")
+        run_layout = run_card.body
         run_actions = QtWidgets.QHBoxLayout()
+        run_actions.setSpacing(8)
         self.start_button = QtWidgets.QPushButton("开始构建")
         self.start_button.setProperty("role", "primary")
         self.start_button.clicked.connect(self.start)
@@ -614,38 +625,108 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
         run_actions.addWidget(self.start_button)
         run_actions.addWidget(self.cancel_button)
         run_layout.addLayout(run_actions)
-        self.progress_bar = QtWidgets.QProgressBar()
-        run_layout.addWidget(self.progress_bar)
-        self.stats = QtWidgets.QLabel("等待视频")
-        self.stats.setProperty("tone", "muted")
+        self.batch_progress = QtWidgets.QProgressBar()
+        self.batch_progress.setObjectName("videoBatchProgress")
+        self.batch_progress.setRange(0, 1000)
+        self.batch_progress.setValue(0)
+        self.batch_progress.setAccessibleName("整批进度")
+        self.batch_progress.setTextVisible(False)
+        run_layout.addSpacing(4)
+        run_layout.addWidget(self.batch_progress)
+        self.stats = SummaryLabel("等待视频", lines=2)
         run_layout.addWidget(self.stats)
         self.log = QtWidgets.QPlainTextEdit()
         self.log.setMaximumBlockCount(1000)
         self.log.setReadOnly(True)
-        self.log.setFixedHeight(76)
+        self.log.setMinimumHeight(48)
+        self.log.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
+                               QtWidgets.QSizePolicy.Policy.Expanding)
         self.log.setPlaceholderText("运行记录")
-        run_layout.addWidget(self.log)
+        run_layout.addWidget(self.log, 1)
         self.open_button = QtWidgets.QPushButton("在画布中复核")
         self.open_button.clicked.connect(self.open_review)
         self.sync_button = QtWidgets.QPushButton("同步更新标签")
+        self.sync_button.setToolTip("保存当前画布并将复核 JSON 写回所属数据集的 YOLO 标签")
         self.sync_button.clicked.connect(self.sync_review)
         review_actions = QtWidgets.QHBoxLayout()
+        review_actions.setSpacing(8)
         review_actions.addWidget(self.open_button)
         review_actions.addWidget(self.sync_button)
         run_layout.addLayout(review_actions)
-        layout.addWidget(run_card)
-        layout.addStretch(1)
-        scroll.setWidget(content)
-        self.setWidget(scroll)
+        layout.addWidget(run_card, 4)
+        for card in (project, model_card, parameter_card, run_card):
+            card.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
+                               QtWidgets.QSizePolicy.Policy.Preferred)
+            card.body.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
+            if card is not run_card:
+                card.body.addStretch(1)
+        self.workflow_body = content
+        self.sidebar_scroll = QtWidgets.QScrollArea()
+        self.sidebar_scroll.setObjectName("videoDockScroll")
+        self.sidebar_scroll.setWidgetResizable(True)
+        self.sidebar_scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        self.sidebar_scroll.setWidget(content)
+        shell = QtWidgets.QWidget()
+        shell.setObjectName("videoSidebarShell")
+        shell_layout = QtWidgets.QVBoxLayout(shell)
+        shell_layout.setContentsMargins(0, 0, 0, 0)
+        shell_layout.setSpacing(0)
+        self.sidebar_heading = QtWidgets.QLabel("视频数据集")
+        self.sidebar_heading.setObjectName("sidebarHeading")
+        self.sidebar_heading.setContentsMargins(12, 5, 10, 5)
+        shell_layout.addWidget(self.sidebar_heading)
+        shell_layout.addWidget(self.sidebar_scroll, 1)
+        self.training_footer = QtWidgets.QWidget()
+        footer_layout = QtWidgets.QVBoxLayout(self.training_footer)
+        footer_layout.setContentsMargins(10, 8, 10, 10)
+        self.training_button = QtWidgets.QPushButton("开始训练")
+        self.training_button.setProperty("role", "primary")
+        self.training_button.setObjectName("startTrainingButton")
+        self.training_button.setMinimumHeight(36)
+        self.training_button.clicked.connect(lambda: self.window.open_training_center())
+        footer_layout.addWidget(self.training_button)
+        shell_layout.addWidget(self.training_footer)
+        self.setWidget(shell)
+        self.workflow_cards = (project, model_card, parameter_card, run_card)
+        project.setObjectName("workflowFirstCard")
+        run_card.setObjectName("workflowLastCard")
+        self.workflow_layout = layout
+        for button in content.findChildren(QtWidgets.QPushButton):
+            button.setMinimumHeight(28)
+            button.setMaximumHeight(32)
+            button.setSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred,
+                                 QtWidgets.QSizePolicy.Policy.Preferred)
+        for control in (self.target_count, self.sample_gap):
+            control.setMinimumWidth(50)
+            control.setMinimumHeight(28)
+            control.setMaximumHeight(32)
+            control.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Fixed)
         self._project_controls = (self.video_button, self.output_button,
                                   self.parameter_button, load_configuration,
                                   self.prompts, self.trust_code, self.open_button,
-                                  self.sync_button, self.start_button)
+                                  self.sync_button, self.start_button, self.training_button,
+                                  self.video_queue, self.queue_up, self.queue_down,
+                                  self.queue_remove, self.target_count, self.sample_gap,
+                                  self.analyze_button)
         self.model_changed()
 
         self._update_parameter_summary()
 
+    def set_collapsed(self, collapsed):
+        if self.collapsed == collapsed:
+            return
+        self.collapsed = collapsed
+        if collapsed:
+            self._expanded_width = self.width()
+            self.hide()
+        else:
+            self.show()
+            self.window.resizeDocks([self], [self._expanded_width], QtCore.Qt.Orientation.Horizontal)
+
     def has_running_workers(self):
+        training = getattr(self.window, "training_window", None)
+        if training and training.is_busy():
+            return True
         return any(worker and getattr(worker, "isRunning", lambda: False)()
                    for worker in (self.pipeline_worker, self.model_worker,
                                   self.sync_worker, self.prepare_worker))
@@ -654,14 +735,22 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
         enabled = not self.has_running_workers()
         for control in self._project_controls:
             control.setEnabled(enabled)
+        self.start_button.setEnabled(enabled and self.confirmed_signature is not None
+                                     and bool(self.config.output_dir))
+        if self.analysis_plan is None:
+            hint = "请先预分析"
+        elif self.confirmed_signature is None:
+            hint = "请在“调整参数”中点击“使用参数”"
+        elif not self.config.output_dir:
+            hint = "请选择输出目录"
+        else:
+            hint = "使用已确认的参数开始构建"
+        self.start_button.setToolTip(hint)
+        training = getattr(self.window, "training_window", None)
+        self.training_button.setEnabled(enabled or bool(training and training.is_busy()))
         self._set_model_selection_enabled(enabled)
 
-    def open_model_dialog(self, task="video"):
-        self.model_dialog.tabs.setCurrentWidget(
-            self.model_dialog.image_page if task == "image" else
-            self.model_dialog.tabs.widget(1))
-        if task == "image":
-            self.model_dialog.refresh_image_models()
+    def open_model_dialog(self):
         motion = getattr(self.window, "button_motion", None)
         if motion is not None:
             motion.attach(self.model_dialog)
@@ -671,27 +760,101 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
 
     def _update_parameter_summary(self):
         self.parameter_summary.setText(
-            f"主目标 ≥{self.config.min_pixel_height}px · "
-            f"空镜/单目标/2–3/4+ 步长 "
-            f"{self.config.idle_jump}/{self.config.step_single}/"
-            f"{self.config.step_small_group}/{self.config.step_large_group}")
+            f"置信度 {self.config.confidence:.2f} · 主目标 ≥{self.config.min_pixel_height}px")
 
     def choose_video(self):
         if self.has_running_workers():
             return
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "选择视频", "", "视频 (*.mp4 *.mkv *.avi *.mov *.webm);;所有文件 (*)")
-        if not path:
+        paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
+            self, "添加视频（按列表顺序处理）", "", "视频 (*.mp4 *.mkv *.avi *.mov *.webm);;所有文件 (*)")
+        if not paths:
             return
-        try:
-            info = video_info(path)
-            self.config.video_path = path
-            self.video_label.setText(
-                f"{Path(path).name}\n{info['width']}×{info['height']} · "
-                f"{info['fps']:.1f} FPS · {info['frames']} 帧")
-            self.video_label.setToolTip(path)
-        except Exception as error:
-            self._error(str(error))
+        errors = []
+        existing = {str(Path(path).resolve()).casefold() for path in self.config.video_paths}
+        for path in paths:
+            if str(Path(path).resolve()).casefold() in existing:
+                continue
+            try:
+                info = video_info(path)
+                if info["frames"] <= 0 or info["fps"] <= 0:
+                    raise ValueError(f"视频缺少有效帧数或 FPS: {path}")
+                duration = info["duration"]
+                item = QtWidgets.QTreeWidgetItem([f"{Path(path).name} · {duration:.0f}s", "—", "等待"])
+                item.setData(0, QtCore.Qt.ItemDataRole.UserRole, path)
+                item.setToolTip(0, f"{path}\n{info['width']}×{info['height']} · {info['fps']:.1f} FPS · {info['frames']} 帧")
+                self.video_queue.addTopLevelItem(item)
+                existing.add(str(Path(path).resolve()).casefold())
+            except Exception as error:
+                errors.append(str(error))
+        self._sync_queue()
+        if errors:
+            self._error("\n".join(errors))
+
+    def _sync_queue(self):
+        self.config.video_paths = [self.video_queue.topLevelItem(index).data(
+            0, QtCore.Qt.ItemDataRole.UserRole) for index in range(self.video_queue.topLevelItemCount())]
+        self.config.video_path = self.config.video_paths[0] if self.config.video_paths else ""
+        self.video_label.setText(f"{len(self.config.video_paths)} 个视频" if self.config.video_paths else "未选择")
+        self._invalidate_analysis()
+
+    def move_video(self, offset):
+        if self.has_running_workers():
+            return
+        index = self.video_queue.indexOfTopLevelItem(self.video_queue.currentItem())
+        other = index + offset
+        if index >= 0 and 0 <= other < self.video_queue.topLevelItemCount():
+            item = self.video_queue.takeTopLevelItem(index)
+            self.video_queue.insertTopLevelItem(other, item)
+            self.video_queue.setCurrentItem(item)
+            self._sync_queue()
+
+    def remove_video(self):
+        if self.has_running_workers():
+            return
+        index = self.video_queue.indexOfTopLevelItem(self.video_queue.currentItem())
+        if index >= 0:
+            self.video_queue.takeTopLevelItem(index)
+            self._sync_queue()
+
+    def _invalidate_analysis(self, *_):
+        self.analysis_plan = self.analysis_signature = None
+        self.confirmed_signature = None
+        if hasattr(self, "stats") and self.stats.text().startswith(("预分析完成", "参数已确认")):
+            self.stats.setText("待预分析")
+        if hasattr(self, "analysis_summary"):
+            self.analysis_summary.setText("待预分析")
+            self.sampling_plan_table.clear()
+            self.sampling_plan_table.hide()
+            for index in range(self.video_queue.topLevelItemCount()):
+                item = self.video_queue.topLevelItem(index)
+                item.setText(1, "—")
+                item.setToolTip(1, "")
+                if item.text(2) in ("已分析", "预分析"):
+                    item.setText(2, "等待")
+                    item.setToolTip(2, "")
+        if hasattr(self, "_project_controls"):
+            self._refresh_task_controls()
+
+    def _refresh_sampling_plan(self, *_):
+        if self.analysis_plan is not None:
+            self.confirmed_signature = None
+            config = replace(self.config, target_count=self.target_count.value(),
+                             min_sample_frames=self.sample_gap.value())
+            self.analysis_plan = recommend_sampling(self.analysis_plan["videos"], config)
+            self._show_analysis(self.analysis_plan)
+            self._update_analysis_status()
+
+    def _update_analysis_status(self):
+        if self.confirmed_signature is None:
+            summary = "预分析完成 · 待确认参数"
+            detail = "打开“调整参数”并点击“使用参数”"
+        else:
+            summary = "参数已确认"
+            detail = "可开始构建" if self.config.output_dir else "请选择输出目录"
+            if self.analysis_signature != self.confirmed_signature:
+                summary += " · 构建前将重新抽检"
+        self.stats.setText(f"{summary}\n{detail}")
+        self._refresh_task_controls()
 
     def choose_output(self):
         if self.has_running_workers():
@@ -700,6 +863,10 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
         if path:
             self.config.output_dir = path
             self.output_label.setText(path)
+            if self.analysis_plan and self.stats.text().startswith(("预分析完成", "参数已确认")):
+                self._update_analysis_status()
+            else:
+                self._refresh_task_controls()
 
     def choose_weight(self):
         if not self.model_combo.isEnabled():
@@ -724,6 +891,7 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
             self.model_changed()
 
     def model_changed(self, *_):
+        self._invalidate_analysis()
         model_id = self.model_combo.currentData()
         spec = get_model(model_id)
         self.config.model_id = model_id
@@ -741,24 +909,44 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
         self.trust_code.setVisible(model_id == "florence2")
         self.weight_label.setText(Path(self.local_model_path).name)
         self.weight_label.setToolTip(self.local_model_path)
+        self._update_model_status(model_id)
+
+    def _update_model_status(self, model_id):
         if model_id == "local_yolo":
             status = "本地权重已选择 · 点击测试模型" if Path(self.config.model_path).is_file() else "未选择本地权重"
         else:
             status = {"missing": "未下载 · 点击下载", "downloaded": "本机已有 · 点击测试模型",
                       "ready": "本机已有 · 已通过加载测试"}[model_download_state(model_id)]
         self.model_status.setText(status)
-        self.model_summary.setText(f"{spec.title} · {status}")
+        self.model_summary.setText(f"{get_model(model_id).title} · {status}")
 
     def edit_parameters(self):
         if self.has_running_workers():
             return
-        dialog = ParameterDialog(self.config, self)
+        shown_config = self._parameter_config()
+        dialog = ParameterDialog(shown_config, self)
         motion = getattr(self.window, "button_motion", None)
         if motion is not None:
             motion.attach(dialog)
-        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-            self.config = replace(self.config, **dialog.values())
-            self._update_parameter_summary()
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            dialog.deleteLater()
+            return
+        values = dialog.values()
+        dialog.deleteLater()
+        self.config = replace(self.config, **values)
+        self._update_parameter_summary()
+        if self.analysis_plan is None:
+            return
+        try:
+            self.confirmed_signature = plan_signature(self._current_config())
+        except (OSError, ValueError) as error:
+            self._invalidate_analysis()
+            self._error(str(error))
+            return
+        if (self.confirmed_signature != self.analysis_signature or
+                any(values[key] != getattr(shown_config, key) for key in DYNAMIC_JUMP_KEYS)):
+            self._use_recommended_jumps = False
+        self._update_analysis_status()
 
     def save_config(self):
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
@@ -781,12 +969,29 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
             loaded = ProjectConfig.load(path)
             get_model(loaded.model_id)
             self.config = loaded
+            self._use_recommended_jumps = False
             if loaded.model_id == "local_yolo":
                 self.local_model_path = loaded.model_path
             self.model_combo.setCurrentIndex(self.model_combo.findData(loaded.model_id))
             self.prompts.setText(loaded.prompt_labels)
             self.trust_code.setChecked(loaded.trust_remote_code)
-            self.video_label.setText(Path(loaded.video_path).name)
+            self.video_queue.clear()
+            for video in video_paths(loaded):
+                item = QtWidgets.QTreeWidgetItem([Path(video).name, "—", "等待"])
+                item.setData(0, QtCore.Qt.ItemDataRole.UserRole, video)
+                item.setToolTip(0, video)
+                self.video_queue.addTopLevelItem(item)
+            self.target_count.setValue(loaded.target_count)
+            frames = loaded.min_sample_frames
+            if frames is None:
+                try:
+                    fps = video_info(video_paths(loaded)[0])["fps"]
+                except (OSError, ValueError):
+                    fps = 25
+                fps = fps if math.isfinite(fps) and fps > 0 else 25
+                frames = max(1, math.ceil(fps * loaded.min_sample_seconds))
+            self.sample_gap.setValue(frames)
+            self._sync_queue()
             self.output_label.setText(loaded.output_dir)
             self.model_changed()
             self._update_parameter_summary()
@@ -837,7 +1042,7 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
         answer = QtWidgets.QMessageBox.question(
             self, "确认下载", f"{spec.title}\n来源：{spec.source_url}\n"
             f"许可：{spec.license}\n版本：{spec.revision}\n\n"
-            "下载到本次临时目录？视频任务结束后自动删除。")
+            "下载到本次临时目录？关闭软件前可以反复使用。")
         if answer == QtWidgets.QMessageBox.StandardButton.Yes:
             self._model_task("download")
 
@@ -905,46 +1110,165 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
             self.model_status.setText("依赖已安装 · 请重启应用")
         self.model_summary.setText(f"{get_model(self.config.model_id).title} · {self.model_status.text()}")
 
+    def _parameter_config(self):
+        if self._use_recommended_jumps and self.analysis_plan is not None:
+            return replace(self.config, **self.analysis_plan["dynamic_jumps"])
+        return self.config
+
     def _current_config(self):
         labels = parse_prompts(self.prompts.text().strip())
         if self.config.model_id == "local_yolo" and labels != ["person"]:
             raise ValueError("当前本地 YOLO 基线只检测 person；如需 person、phone 等自由类别，请选择开放词汇模型")
-        return replace(self.config, prompt_labels=", ".join(labels),
-                       trust_remote_code=self.trust_code.isChecked())
+        return replace(self._parameter_config(), prompt_labels=", ".join(labels),
+                       trust_remote_code=self.trust_code.isChecked(),
+                       target_count=self.target_count.value(),
+                       min_sample_frames=self.sample_gap.value())
 
     def start(self):
-        if self.has_running_workers():
+        self._start_video_task(False)
+
+    def analyze(self):
+        self._start_video_task(True)
+
+    def _start_video_task(self, analyze_only):
+        if self.pipeline_worker is not None or self.has_running_workers():
             return
         try:
+            if not analyze_only and self.confirmed_signature is None:
+                raise ValueError("请先预分析，再在“调整参数”中点击“使用参数”")
             config = self._current_config()
-            config.validate()
-            if not Path(config.video_path).is_file() or not Path(config.model_path).exists():
-                raise ValueError("请先选择有效视频和模型")
-            self.pipeline_worker = VideoPipelineWorker(config, self)
+            config.validate(require_output=not analyze_only)
+            if not all(Path(path).is_file() for path in video_paths(config)):
+                raise ValueError("视频队列中有文件无法访问，请检查素材路径")
+            if not Path(config.model_path).exists():
+                raise ValueError("请先在“模型加载”中选择或下载所选模型的权重")
+            signature = plan_signature(config)
+            if not analyze_only and signature != self.confirmed_signature:
+                self._invalidate_analysis()
+                raise ValueError("视频或模型文件已变化，请重新预分析并确认参数")
+            if analyze_only:
+                self.confirmed_signature = None
+            plan = self.analysis_plan if signature == self.analysis_signature else None
+            refresh = not analyze_only and plan is None
+            self.pipeline_worker = VideoPipelineWorker(config, self, analyze_only, plan, refresh)
             self.pipeline_worker.progress.connect(self._progress)
-            self.pipeline_worker.failed.connect(self._error)
+            self.pipeline_worker.failed.connect(self._video_failed)
             self.pipeline_worker.completed.connect(self._completed)
             self.pipeline_worker.finished.connect(self._pipeline_finished)
-            self.pipeline_worker.finished.connect(self._refresh_task_controls)
             self.start_button.setEnabled(False)
             self._set_model_selection_enabled(False)
-            self.progress_bar.setValue(0)
+            self._set_batch_progress(0)
+            self.batch_progress.setRange(0, 0)
+            self.stats.setText("正在加载模型 · 准备预分析" if analyze_only else "正在加载模型 · 准备构建")
+            for index in range(self.video_queue.topLevelItemCount()):
+                self.video_queue.topLevelItem(index).setText(2, "等待")
             self.live_review_dir = None
-            self._log("开始处理视频")
+            self._log("开始预分析视频队列" if analyze_only else "开始按序构建数据集")
             self.pipeline_worker.start()
             self._refresh_task_controls()
         except Exception as error:
             self._error(str(error))
 
+    def _set_batch_progress(self, fraction):
+        if self.batch_progress.maximum() == 0:
+            self.batch_progress.setRange(0, 1000)
+        self.batch_progress.setValue(int(1000 * fraction))
+
     def _progress(self, event):
-        self.progress_bar.setMaximum(event["total"])
-        self.progress_bar.setValue(event["frame"])
+        phase = event.get("phase")
+        index = event.get("video_index", 0)
+        count = event.get("video_count", 1)
+        item = self.video_queue.topLevelItem(index)
+        if phase == "plan":
+            self.analysis_plan = event["plan"]
+            self.analysis_signature = event["signature"]
+            self._show_analysis(self.analysis_plan)
+            target = self.analysis_plan["target"]
+            self._set_batch_progress(event.get("batch_saved", 0) / target if target else 0)
+            self._log("预分析完成 · 开始构建")
+            return
+        if phase == "existing":
+            saved, target = event["batch_saved"], event["target"]
+            self._log(f"输出目录已有 {saved:,} 张，继续构建")
+            if target:
+                self._set_batch_progress(saved / target)
+            return
+        if phase == "analysis":
+            fraction = (index + event["fraction"]) / count
+            self._set_batch_progress(fraction)
+            self.stats.setText(f"预分析 · 视频 {index + 1}/{count} · {self.batch_progress.value() // 10}%\n"
+                               f"{event['reason']}")
+            if item:
+                item.setText(2, "预分析")
+            return
+        if phase == "video_start":
+            action = "补采" if event.get("supplemental") else "构建"
+            if item:
+                item.setText(2, "补采中" if event.get("supplemental") else "处理中")
+            self.stats.setText(f"视频 {index + 1}/{count} · 开始{action}")
+            self._log(f"视频 {index + 1}/{count} · 开始{action}")
+            return
+        if phase == "video_done":
+            status = "已取消" if event["cancelled"] else "已完成"
+            if item:
+                item.setText(2, status)
+                item.setToolTip(2, f"本轮保存 {event['saved']} 张，整批累计 {event['batch_saved']} 张")
+            if not event["cancelled"]:
+                target = event["target"]
+                self._set_batch_progress(event["batch_saved"] / target if target else (index + 1) / count)
+            self._log(f"视频 {index + 1}/{count} · {status}，本轮保存 {event['saved']:,} 张")
+            return
+        saved, target = event["batch_saved"], event["target"]
+        fraction = saved / target if target else (index + event["fraction"]) / count
+        self._set_batch_progress(fraction)
+        tally = f"{saved:,}/{target:,}" if target else f"{saved:,}"
+        state = "补采" if event.get("supplemental") else "构建"
         self.stats.setText(
-            f"源帧 {event['frame']}/{event['total']} · 推理 {event['scanned']} · "
-            f"保存 {event['saved']} · 淘汰 {event['discarded']}")
-        self._log(event["reason"])
+            f"{state} · 视频 {index + 1}/{count} · {self.batch_progress.value() // 10}%\n"
+            f"整批 {tally} 张 · 本轮推理 {event['scanned']:,} 帧")
         if event.get("image"):
             self._show_live_image(event["image"])
+
+    def _show_analysis(self, plan):
+        self.sampling_plan_table.clear()
+        lines = []
+        for index, report in enumerate(plan["videos"]):
+            item = self.video_queue.topLevelItem(index)
+            detail = analysis_detail(report)
+            if item:
+                item.setText(1, str(report["quota"]) if plan["target"] else "—")
+                item.setText(2, "已分析")
+                item.setToolTip(1, detail)
+                item.setToolTip(2, detail)
+            table_item = QtWidgets.QTreeWidgetItem([
+                Path(report["path"]).name, f"{report['quota']:,} 张" if plan["target"] else "—",
+                f"{report['recommended_jump']:,} 帧" if report["recommended_jump"] else "—"])
+            for column in range(table_item.columnCount()):
+                table_item.setToolTip(column, detail)
+            self.sampling_plan_table.addTopLevelItem(table_item)
+            lines.append(detail)
+        self.sampling_plan_table.setVisible(bool(lines))
+        probes = sum(report["probes"] for report in plan["videos"])
+        estimate = f"预计 {plan['estimated_saved']:,} / {plan['target']:,} 张"
+        if plan["target"] and plan["estimated_saved"] >= plan["target"]:
+            estimate += f" · 约 {plan['estimated_seconds'] / 60:.1f} 分钟"
+        if not plan["target"]:
+            estimate = "设置数据集图片数量后生成分配计划"
+        text = f"共 {plan['total_frames']:,} 帧 · 抽检 {probes:,} 帧\n{estimate}"
+        self.analysis_summary.setText(text)
+        totals = [f"{label} {sum(report['estimated_frames'][key] for report in plan['videos']):,} 帧"
+                  for key, label in TARGET_COUNT_BUCKETS]
+        self.analysis_summary.setToolTip("\n\n".join(["全片帧数估算 · " + " · ".join(totals), *lines]))
+
+    def _video_failed(self, message):
+        if self.batch_progress.maximum() == 0:
+            self._set_batch_progress(0)
+        self.stats.setText("处理失败 · 详情见运行记录")
+        for index in range(self.video_queue.topLevelItemCount()):
+            item = self.video_queue.topLevelItem(index)
+            if item.text(2) in ("处理中", "补采中", "预分析"):
+                item.setText(2, "失败")
+        self._error(message)
 
     def _show_live_image(self, image):
         view = self.window.labeling_widget.view
@@ -983,22 +1307,45 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
                 worker.requestInterruption()
 
     def _completed(self, result):
+        if result.get("analysis"):
+            if result.get("cancelled") or result.get("plan") is None:
+                self._log("预分析已取消")
+                self._invalidate_analysis()
+                if self.batch_progress.maximum() == 0:
+                    self._set_batch_progress(0)
+                self.stats.setText("预分析已取消")
+                return
+            self.analysis_plan = result["plan"]
+            self.analysis_signature = result["signature"]
+            self.confirmed_signature = None
+            self._use_recommended_jumps = True
+            self._show_analysis(result["plan"])
+            self._set_batch_progress(1)
+            self._update_analysis_status()
+            self._log("预分析完成 · 动态步长已回填")
+            return
         status = "已取消" if result.get("cancelled") else "处理完成"
         self._log(f"{status}：保存 {result['saved']}，淘汰 {result['discarded']}")
+        if result.get("existing"):
+            detail = f"{status} · 数据集 {result['dataset_total']:,} 张 · 本次新增 {result['saved']:,} 张"
+        else:
+            detail = f"{status} · 共保存 {result['saved']:,} 张"
+        if result.get("shortfall"):
+            detail += f" · 距目标少 {result['shortfall']} 张"
+            self._log("未达到目标：在当前质量门槛与最小间隔下，可用采样位置不足。")
+        self.stats.setText(detail)
+        if not result.get("cancelled"):
+            self._set_batch_progress(result["dataset_total"] / result["target"] if result.get("shortfall") else 1)
+        elif self.batch_progress.maximum() == 0:
+            self._set_batch_progress(0)
         if result["saved"] and self.live_review_dir != str(Path(self.config.output_dir) / "images"):
             self.open_review()
 
     def _pipeline_finished(self):
-        self.start_button.setEnabled(True)
-        self._set_model_selection_enabled(True)
-        model_id = self.pipeline_worker.config.model_id
-        if model_id != "local_yolo":
-            try:
-                if release_session_model(model_id):
-                    self._log("临时模型已删除；下次构建需重新下载")
-                    self.model_changed()
-            except OSError as error:
-                self._log(f"临时模型清理失败：{error}")
+        worker = self.pipeline_worker
+        self.pipeline_worker = None
+        worker.deleteLater()
+        self._refresh_task_controls()
 
     def _set_model_selection_enabled(self, enabled):
         for control in (self.model_combo, self.weight_button, self.model_dialog.square_button):
@@ -1013,14 +1360,10 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
             self._error("当前项目没有可复核图片")
             return
         if any(not image.with_suffix(".json").is_file() for image in image_files):
-            if self.prepare_worker and self.prepare_worker.isRunning():
-                return
-            self.prepare_worker = ReviewPrepareWorker(self.config.output_dir, self)
-            self.prepare_worker.completed.connect(lambda _result: self._load_review_images())
-            self.prepare_worker.failed.connect(self._error)
-            self.prepare_worker.finished.connect(self._refresh_task_controls)
-            self.prepare_worker.start()
-            self._refresh_task_controls()
+            self._start_review_worker(
+                "prepare_worker", ReviewPrepareWorker(self.config.output_dir, self),
+                lambda _result: self._load_review_images(),
+            )
             self._log("正在准备原生标注文件…")
             return
         self._load_review_images()
@@ -1036,21 +1379,60 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
         if self.has_running_workers():
             return
         view = self.window.labeling_widget.view
-        if not view.may_continue():
+        try:
+            image, root = review_sync_location(view.image_path, self.config.output_dir)
+        except ValueError as error:
+            self._error(str(error))
             return
-        self.sync_worker = SyncWorker(self.config.output_dir, self)
-        self.sync_worker.completed.connect(self._sync_done)
-        self.sync_worker.failed.connect(self._error)
-        self.sync_worker.finished.connect(self._refresh_task_controls)
-        self.sync_worker.start()
+        default_classes = root / "classes.txt"
+        classes_file, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self, "选择类别文件", str(default_classes if default_classes.is_file() else root),
+            "类别文件 (*.txt);;所有文件 (*)",
+        )
+        if not classes_file:
+            return
+        if not view.save_annotations_for_sync():
+            self._log("当前复核标注保存失败，未写入任何 YOLO 标签。")
+            return
+        active_annotation = None
+        if image is not None:
+            annotation = Path(view.get_label_file())
+            if annotation.is_file() or view.label_file is not None:
+                active_annotation = (image, annotation)
+        self._start_review_worker(
+            "sync_worker", SyncWorker(root, classes_file, self, active_annotation=active_annotation), self._sync_done
+        )
+        self._log(f"正在同步更新标签：{root / 'labels'}")
+
+    def _start_review_worker(self, slot, worker, completed):
+        setattr(self, slot, worker)
+        worker.completed.connect(completed)
+        worker.failed.connect(self._error)
+        worker.finished.connect(lambda: self._retire_review_worker(slot, worker))
+        worker.start()
         self._refresh_task_controls()
-        self._log("正在同步更新标签…")
+
+    def _retire_review_worker(self, slot, worker):
+        if getattr(self, slot) is worker:
+            setattr(self, slot, None)
+        worker.deleteLater()
+        self._refresh_task_controls()
 
     def _sync_done(self, result):
-        self._log(f"YOLO 标签已更新：{result['labels']} 个文件")
+        self._log(f"YOLO 标签已更新：{result['labels']} 个文件 · {result['labels_dir']}")
+        if result["skipped"]:
+            self._log(f"另有 {result['skipped']} 张图片未保存复核 JSON，保留其原标签。")
 
     def _log(self, message):
-        self.log.appendPlainText(str(message))
+        message = str(message)
+        if self.log.document().lastBlock().text() == message:
+            return
+        scrollbar = self.log.verticalScrollBar()
+        position = scrollbar.value()
+        follow = position == scrollbar.maximum()
+        self.log.appendPlainText(message)
+        if not follow:
+            scrollbar.setValue(position)
 
     def _error(self, message):
         if hasattr(self.window, "_close_timer") and self.window._close_timer.isActive():
@@ -1058,7 +1440,7 @@ class VideoDatasetDock(QtWidgets.QDockWidget):
             return
         self._log("错误：" + str(message))
         self.model_status.setText("错误：" + str(message))
-        QtWidgets.QMessageBox.warning(self, "AutoLabel", str(message))
+        QtWidgets.QMessageBox.warning(self, APP_NAME, str(message))
 
     def stop_workers(self):
         self.cancel()

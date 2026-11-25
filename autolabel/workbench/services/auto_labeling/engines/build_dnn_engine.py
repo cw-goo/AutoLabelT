@@ -4,7 +4,9 @@ import cv2
 class DnnBaseModel:
     def __init__(self, model_path, device_type: str = "cpu") -> None:
         self.net = cv2.dnn.readNet(model_path)
-        if device_type.lower() == "gpu":
+        if device_type.lower() == "gpu" and cv2.dnn.DNN_TARGET_CUDA in cv2.dnn.getAvailableTargets(
+            cv2.dnn.DNN_BACKEND_CUDA
+        ):
             self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
             self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
 

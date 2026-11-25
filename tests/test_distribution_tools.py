@@ -45,6 +45,7 @@ def test_wheel_rejects_old_contents_at_current_path(tmp_path):
 
 def test_sdist_rejects_deleted_assets_and_local_material(tmp_path):
     wheel = make_wheel(tmp_path)
+    (tmp_path / "environment.yml").write_text("name: autolabel\n", encoding="utf-8")
     sdist = tmp_path / "test.tar.gz"
     with tarfile.open(sdist, "w:gz") as archive:
         for name in ("autolabel/__init__.py", "autolabel/assets/logo.png",
@@ -55,6 +56,7 @@ def test_sdist_rejects_deleted_assets_and_local_material(tmp_path):
     errors = audit_distribution(wheel, sdist, root=tmp_path)["errors"]
     assert "Unexpected application file in source archive: autolabel/assets/logo.svg" in errors
     assert "Local file leaked into source archive: SoftwareCopyright/private.md" in errors
+    assert "Missing source archive file: environment.yml" in errors
 
 
 def test_clean_source_copy_excludes_old_builds_and_local_data(tmp_path):
@@ -73,6 +75,7 @@ def test_clean_source_copy_excludes_old_builds_and_local_data(tmp_path):
     copied = tmp_path / "clean"
     copy_build_inputs(root, copied)
     assert (copied / "autolabel/__init__.py").is_file()
+    assert (copied / "environment.yml").read_bytes() == (root / "environment.yml").read_bytes()
     assert not (copied / "autolabel/__pycache__").exists()
     assert not (copied / "build").exists()
     assert not (copied / "artifacts").exists()

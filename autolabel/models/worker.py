@@ -10,7 +10,6 @@ from PyQt6 import QtCore
 
 from .adapters import create_detector
 from .downloader import download_model, mark_model_ready, model_path
-from .registry import get_model
 
 
 def _stop_install_process(process):

@@ -1,8 +1,8 @@
-# AutoLabel 架构与实施方案
+# AutoLabelT 架构与实施方案
 
 ## 产品工作流
 
-默认入口为 AutoLabel 集成工作台，复用标注画布、文件列表、快捷键和图片模型面板，在右侧增加视频数据集操作。内核来源与许可证见根目录 `THIRD_PARTY_NOTICES.md` 和 `LICENSE`。视频算法基于已验证的 `databuild.py`，不改变动态步长、主目标高度、小目标占比和伴随标注规则。
+默认入口为 AutoLabelT 集成工作台。主界面包含标注画布、文件列表、图片模型面板和右侧视频数据集操作，右侧提供独立训练中心的入口。标注内核来源与许可证见 `THIRD_PARTY_NOTICES.md` 和 `LICENSE`。视频采样和筛选规则以 `databuild.py` 为基线。
 
 ## 当前模块
 
@@ -11,7 +11,7 @@
 - `autolabel/models/downloader.py`：后台下载可取消、权重 SHA256、本地 manifest；YOLO-World 管理专用 CLIP 文本编码器。
 - `autolabel/models/adapters.py`：本地 YOLO、YOLO-World、Grounding DINO、Florence-2 统一归一化 BBox 与提示词类别 ID。
 - `autolabel/models/worker.py`：模型下载、可选依赖安装、加载和测试推理的 Qt 工作线程。
-- `autolabel/workbench/`：已迁移到 AutoLabel 命名空间的标注内核及图片模型面板。
+- `autolabel/workbench/`：标注内核及图片模型面板。
 - `autolabel/desktop.py`、`video_dock.py`：集成入口、视频停靠面板、后台任务和参数对话框。
 - `autolabel/annotation_bridge.py`：调用原项目转换器，进行 YOLO TXT ↔ 原生 JSON 复核衔接。
 - 旧的独立界面和简化画布已删除；当前统一使用集成工作台。

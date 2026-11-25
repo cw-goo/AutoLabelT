@@ -2276,8 +2276,8 @@ Original images backed up to:
     </message>
     <message>
       <location filename="../../views/training/widgets/ultralytics_widgets/custom_dialogs.py" line="117" />
-      <source>Generate the model configuration and load it in AutoLabel</source>
-      <translation>모델 구성을 생성하고 AutoLabel에서 불러오기</translation>
+      <source>Generate the model configuration and load it in the workbench</source>
+      <translation>모델 구성을 생성하고 작업대에서 불러오기</translation>
     </message>
   </context>
   <context>

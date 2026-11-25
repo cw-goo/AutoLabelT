@@ -98,6 +98,30 @@ def test_model_download_failure_keeps_no_ready_manifest(tmp_path, monkeypatch):
     assert not list(tmp_path.rglob("manifest.json"))
 
 
+def test_model_manifest_belongs_to_the_tested_model(tmp_path, monkeypatch):
+    import json
+    from autolabel.models.downloader import mark_model_ready, model_download_state, model_path
+    from autolabel.models.registry import get_model
+
+    monkeypatch.setenv("AUTOLABEL_MODEL_DIR", str(tmp_path))
+    spec = get_model("grounding_dino")
+    location = model_path(spec.model_id)
+    location.mkdir(parents=True)
+    weight = location / "model.safetensors"
+    weight.write_bytes(b"weights")
+    manifest = location / "manifest.json"
+    manifest.write_text("[]", encoding="utf-8")
+    assert model_download_state(spec.model_id) == "missing"
+    manifest.write_text(json.dumps({"model_id": "another_model", "revision": spec.revision,
+                                    "status": "downloaded"}), encoding="utf-8")
+    mark_model_ready(spec.model_id, weight)
+    assert json.loads(manifest.read_text())["status"] == "downloaded"
+    manifest.write_text(json.dumps({"model_id": spec.model_id, "revision": spec.revision,
+                                    "status": "downloaded"}), encoding="utf-8")
+    mark_model_ready(spec.model_id, weight)
+    assert model_download_state(spec.model_id) == "ready"
+
+
 def test_pretrained_yolo_catalog_and_managed_download(tmp_path, monkeypatch):
     import io
     import json

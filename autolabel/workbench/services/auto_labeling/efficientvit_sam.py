@@ -2,7 +2,6 @@ import os
 import cv2
 import traceback
 import numpy as np
-import onnxruntime as ort
 
 from copy import deepcopy
 from typing import Any, Union, Tuple
@@ -21,6 +20,7 @@ from autolabel.workbench.views.labeling.utils.opencv import (
 from autolabel.workbench.services.auto_labeling.utils import calculate_rotation_theta
 
 from .lru_cache import LRUCache
+from .engines.build_onnx_engine import create_onnx_session
 from .model import Model
 from .types import AutoLabelingResult
 
@@ -36,13 +36,8 @@ class SamEncoder:
 
     def __init__(self, model_path: str):
         # Load models
-        providers = ort.get_available_providers()
 
-        # Pop TensorRT Runtime due to crashing issues
-        # TODO: Add back when TensorRT backend is stable
-        providers = [p for p in providers if p != "TensorrtExecutionProvider"]
-
-        self.session = ort.InferenceSession(model_path, providers=providers)
+        self.session = create_onnx_session(model_path)
 
         self.input_name = self.session.get_inputs()[0].name
         self.input_shape = self.session.get_inputs()[0].shape
@@ -85,14 +80,9 @@ class SamDecoder:
 
     def __init__(self, model_path: str, target_size: int):
         # Load models
-        providers = ort.get_available_providers()
-
-        # Pop TensorRT Runtime due to crashing issues
-        # TODO: Add back when TensorRT backend is stable
-        providers = [p for p in providers if p != "TensorrtExecutionProvider"]
 
         self.target_size = target_size
-        self.session = ort.InferenceSession(model_path, providers=providers)
+        self.session = create_onnx_session(model_path)
 
     @staticmethod
     def get_preprocess_shape(

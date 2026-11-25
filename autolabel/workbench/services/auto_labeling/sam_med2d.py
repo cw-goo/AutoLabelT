@@ -2,7 +2,6 @@ import os
 import cv2
 import traceback
 import numpy as np
-import onnxruntime as ort
 
 from copy import deepcopy
 from PyQt6 import QtCore
@@ -20,6 +19,7 @@ from autolabel.workbench.views.labeling.utils.opencv import (
 from autolabel.workbench.services.auto_labeling.utils import calculate_rotation_theta
 
 from .lru_cache import LRUCache
+from .engines.build_onnx_engine import create_onnx_session
 from .model import Model
 from .types import AutoLabelingResult
 from .__base__.clip import ChineseClipONNX
@@ -32,17 +32,12 @@ class SegmentAnythingONNX:
         self.pixel_std = np.array([58.395, 57.12, 57.375])
 
         # Load models
-        providers = ort.get_available_providers()
 
-        # Pop TensorRT Runtime due to crashing issues
-        # TODO: Add back when TensorRT backend is stable
-        providers = [p for p in providers if p != "TensorrtExecutionProvider"]
-
-        self.encoder_session = ort.InferenceSession(
-            encoder_model_path, providers=providers
+        self.encoder_session = create_onnx_session(
+            encoder_model_path
         )
-        self.decoder_session = ort.InferenceSession(
-            decoder_model_path, providers=providers
+        self.decoder_session = create_onnx_session(
+            decoder_model_path
         )
 
         self.encoder_input_name = self.encoder_session.get_inputs()[0].name

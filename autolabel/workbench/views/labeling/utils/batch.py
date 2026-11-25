@@ -39,6 +39,9 @@ from autolabel.workbench.views.labeling.utils._io import io_open
 from autolabel.workbench.views.labeling.utils.image_tags import normalize_image_tags
 from autolabel.workbench.views.labeling.utils.qt import new_icon_path
 from autolabel.workbench.views.labeling.utils.style import get_dialog_style
+from autolabel.workbench.views.labeling.utils.supplement import (
+    read_yolo_baseline, supplementary_shapes, yolo_label_path,
+)
 from autolabel.workbench.views.labeling.widgets.popup import Popup
 
 __all__ = ["run_all_images"]
@@ -145,13 +148,36 @@ class BatchRangeDialog(QDialog):
         run_button.clicked.connect(self.accept)
         buttons.addWidget(run_button, 1)
         range_layout.addLayout(buttons, 5, 1)
-        self.clear_annotations = QtWidgets.QCheckBox("清除所选图片的旧 JSON 标注后重新推理")
-        self.clear_annotations.setToolTip(
-            "运行前删除所选图片旁及标注输出目录中的同名 JSON，清空旧类别列表。"
-            "旧标注会保留备份；取消或失败时自动恢复。"
+        options = QGridLayout()
+        options.setVerticalSpacing(8)
+        self.annotation_mode = QtWidgets.QComboBox()
+        self.annotation_mode.addItem("按模型设置", "model")
+        self.annotation_mode.addItem("清除旧标注后重新推理", "clear")
+        self.annotation_mode.addItem("保留旧标注，只补漏标", "supplement")
+        mode_label = QLabel("标注模式")
+        mode_label.setBuddy(self.annotation_mode)
+        options.addWidget(mode_label, 0, 0)
+        options.addWidget(self.annotation_mode, 0, 1)
+        self.supplement_iou = QtWidgets.QDoubleSpinBox()
+        self.supplement_iou.setRange(0.05, 1.0)
+        self.supplement_iou.setSingleStep(0.05)
+        self.supplement_iou.setValue(0.60)
+        self.supplement_iou.setToolTip(
+            "新旧框的交并比达到此值时，保留原框。阈值越低，跳过的重叠框越多。"
         )
-        range_layout.setRowMinimumHeight(4, 48)
-        range_layout.addWidget(self.clear_annotations, 4, 0, 1, 2)
+        iou_label = QLabel("重复框判定（IoU）")
+        iou_label.setBuddy(self.supplement_iou)
+        options.addWidget(iou_label, 1, 0)
+        options.addWidget(self.supplement_iou, 1, 1)
+
+        def show_threshold():
+            visible = self.annotation_mode.currentData() == "supplement"
+            iou_label.setVisible(visible)
+            self.supplement_iou.setVisible(visible)
+
+        self.annotation_mode.currentIndexChanged.connect(show_threshold)
+        show_threshold()
+        range_layout.addLayout(options, 4, 0, 1, 2)
         layout.addLayout(range_layout)
 
 
@@ -308,6 +334,8 @@ def finish_processing(self, progress_dialog):
         return
 
     cancelled = getattr(self, "cancel_processing", False)
+    supplement = getattr(self, "_batch_supplement_iou", None) is not None
+    added, skipped = getattr(self, "_batch_supplement_counts", (0, 0))
     try:
         transaction = getattr(self, "_batch_transaction", None)
         if transaction is not None:
@@ -317,7 +345,9 @@ def finish_processing(self, progress_dialog):
             else:
                 transaction.commit()
                 config = self.auto_labeling_widget.model_manager.loaded_model_config or {}
-                if isinstance(config.get("classes"), (list, tuple)):
+                if supplement:
+                    set_label_palette(self, self._batch_palette + list(self._batch_supplement_labels))
+                elif isinstance(config.get("classes"), (list, tuple)):
                     set_label_palette(self, config["classes"])
         target_file = self.image_list[self.current_index]
         self.import_image_folder(osp.dirname(target_file), load=False)
@@ -336,8 +366,14 @@ def finish_processing(self, progress_dialog):
         _reset_batch_processing_state(self)
         progress_dialog.close()
 
+    if cancelled:
+        message = "已取消，旧标注已恢复。"
+    elif supplement:
+        message = f"补标完成 · 新增 {added:,} 个，跳过 {skipped:,} 个重复标注"
+    else:
+        message = self.tr("Processing completed successfully!")
     popup = Popup(
-        "已取消，旧标注已恢复。" if cancelled else self.tr("Processing completed successfully!"),
+        message,
         self,
         icon=new_icon_path("copy-green", "svg"),
     )
@@ -364,6 +400,9 @@ def _start_batch_processing(self):
             with open(image, "rb") as stream:
                 stream.read(1)
         self._batch_palette = palette_names(self)
+        if getattr(self, "_batch_supplement_iou", None) is not None:
+            self._batch_supplement_labels = {}
+            self._batch_supplement_counts = [0, 0]
         if getattr(self, "_batch_clear_annotations", False):
             _clear_batch_annotations(self)
     except Exception as error:
@@ -432,6 +471,9 @@ def _reset_batch_processing_state(self):
         "_batch_start_index",
         "_batch_end_index",
         "_batch_clear_annotations",
+        "_batch_supplement_iou",
+        "_batch_supplement_labels",
+        "_batch_supplement_counts",
         "_batch_transaction",
         "_batch_palette",
     ):
@@ -446,11 +488,63 @@ def _reset_auto_labeling_tracker(self):
     model_manager.set_auto_labeling_reset_tracker()
 
 
+def _new_annotation(self, image_file, shapes, description=""):
+    image_data = None
+    if self._config["store_data"]:
+        with open(image_file, "rb") as stream:
+            image_data = base64.b64encode(stream.read()).decode("utf-8")
+    image_width, image_height = get_image_size(image_file)
+    return {
+        "version": __version__,
+        "flags": {},
+        "checked": False,
+        "shapes": shapes,
+        "imagePath": osp.basename(image_file),
+        "imageData": image_data,
+        "imageHeight": image_height,
+        "imageWidth": image_width,
+        "description": description,
+    }
+
+
+def _save_supplement(self, image_file, output, predicted, threshold):
+    transaction = self._batch_transaction
+    transaction.watch(output)
+    output_exists = osp.isfile(output)
+    sidecar = osp.splitext(image_file)[0] + ".json"
+    baseline = output if output_exists else sidecar
+    transaction.watch(baseline)
+    data = None
+    if osp.isfile(baseline):
+        with io_open(baseline, "r") as stream:
+            data = json.load(stream)
+    elif not output_exists:
+        label, root = yolo_label_path(image_file)
+        if label is not None:
+            transaction.watch(label)
+            if label.is_file():
+                data = read_yolo_baseline(image_file, label, root, transaction.watch)
+
+    original = data.get("shapes") if data is not None else []
+    if not isinstance(original, list):
+        raise ValueError(f"原标注的形状列表无效：{baseline}")
+    added = supplementary_shapes(original, predicted, threshold)
+    self._batch_supplement_counts[0] += len(added)
+    self._batch_supplement_counts[1] += len(predicted) - len(added)
+    self._batch_supplement_labels.update(dict.fromkeys(shape["label"] for shape in original + added))
+    if not added and (output_exists or data is None):
+        return
+    if data is None:
+        data = _new_annotation(self, image_file, added)
+    elif added:
+        data["shapes"] = original + added
+        data["checked"] = False
+    atomic_write_json(transaction.stage_path(output), data, ensure_ascii=False, indent=2)
+
+
 def save_auto_labeling_result(self, image_file, auto_labeling_result):
     try:
-        label_file = osp.splitext(image_file)[0] + ".json"
-        if self.output_dir:
-            label_file = osp.join(self.output_dir, osp.basename(label_file))
+        label_file = _batch_output_path(self, image_file)
 
         if auto_labeling_result is None:
             raise RuntimeError(f"模型未返回有效结果，已停止保存：{image_file}")
@@ -467,6 +561,11 @@ def save_auto_labeling_result(self, image_file, auto_labeling_result):
             unknown = {shape["label"] for shape in new_shapes} - set(config["classes"])
             if unknown:
                 raise ValueError(f"模型结果包含未定义类别 {sorted(unknown)}：{image_file}")
+
+        threshold = getattr(self, "_batch_supplement_iou", None)
+        if threshold is not None:
+            _save_supplement(self, image_file, label_file, new_shapes, threshold)
+            return
 
         if osp.exists(label_file):
             with io_open(label_file, "r") as f:
@@ -496,27 +595,7 @@ def save_auto_labeling_result(self, image_file, auto_labeling_result):
                     data["checked"] = False
                 data[IMAGE_TAGS_FIELD] = tags
         else:
-            if self._config["store_data"]:
-                with open(image_file, "rb") as f:
-                    image_data = f.read()
-                image_data = base64.b64encode(image_data).decode("utf-8")
-            else:
-                image_data = None
-
-            image_path = osp.basename(image_file)
-            image_width, image_height = get_image_size(image_file)
-
-            data = {
-                "version": __version__,
-                "flags": {},
-                "checked": False,
-                "shapes": new_shapes,
-                "imagePath": image_path,
-                "imageData": image_data,
-                "imageHeight": image_height,
-                "imageWidth": image_width,
-                "description": new_description,
-            }
+            data = _new_annotation(self, image_file, new_shapes, new_description)
             if new_tags is not None:
                 data[IMAGE_TAGS_FIELD] = normalize_image_tags(
                     new_tags, f"auto labeling result for {image_file}"
@@ -653,7 +732,8 @@ def process_next_image(self, progress_dialog, batch=True):
         and batch_processing_mode != "video"
     ):
         skip_detection = (
-            self.auto_labeling_widget.button_skip_detection.isChecked()
+            getattr(self, "_batch_supplement_iou", None) is None
+            and self.auto_labeling_widget.button_skip_detection.isChecked()
         )
         self._batch_thread = BatchProcessingThread(
             self,
@@ -871,18 +951,17 @@ def run_all_images(self):
     if not self.may_continue():
         return
 
-    if self.auto_labeling_widget.model_manager.loaded_model_config is None:
+    config = self.auto_labeling_widget.model_manager.loaded_model_config
+    if config is None:
         self.auto_labeling_widget.model_manager.new_model_status.emit(
             self.tr("Model is not loaded. Choose a mode to continue.")
         )
         return
 
-    if (
-        self.auto_labeling_widget.model_manager.loaded_model_config["type"]
-        in _BATCH_PROCESSING_INVALID_MODELS
-    ):
+    model_type = config["type"]
+    if model_type in _BATCH_PROCESSING_INVALID_MODELS:
         logger.warning(
-            f"The model `{self.auto_labeling_widget.model_manager.loaded_model_config['type']}`"
+            f"The model `{model_type}`"
             f" is not supported for this action."
             f" Please choose a valid model to execute."
         )
@@ -894,13 +973,31 @@ def run_all_images(self):
         return
 
     current_index = self.fn_to_index[str(self.filename)]
+    remote_mode = "default"
+    if model_type == "remote_server":
+        get_mode = getattr(config["model"], "get_batch_processing_mode", None)
+        if get_mode is not None:
+            remote_mode = get_mode()
+        if remote_mode is None:
+            self.auto_labeling_widget.model_manager.new_model_status.emit(
+                self.tr("Batch processing is not supported for the current task.")
+            )
+            return
     response = BatchRangeDialog(
         len(self.image_list), current_index + 1, parent=self
     )
-    response.clear_annotations.setChecked(
-        self.auto_labeling_widget.model_manager.loaded_model_config["type"]
-        == "autolabel_local_yolo"
-    )
+    supports_supplement = model_type not in _BATCH_PROCESSING_VIDEO_MODELS and remote_mode != "video"
+    annotation_mode = response.annotation_mode
+    default_mode = "clear" if model_type == "autolabel_local_yolo" else "model"
+    if supports_supplement:
+        sidecar = osp.splitext(self.filename)[0] + ".json"
+        label, _ = yolo_label_path(self.filename)
+        if (osp.isfile(_batch_output_path(self, self.filename)) or osp.isfile(sidecar)
+                or (label is not None and label.is_file())):
+            default_mode = "supplement"
+    else:
+        annotation_mode.removeItem(annotation_mode.findData("supplement"))
+    annotation_mode.setCurrentIndex(annotation_mode.findData(default_mode))
     if response.exec() != QDialog.DialogCode.Accepted:
         return
 
@@ -909,35 +1006,18 @@ def run_all_images(self):
     self.current_index = current_index
     self._batch_start_index = response.from_input.value() - 1
     self._batch_end_index = response.to_input.value()
-    self._batch_clear_annotations = response.clear_annotations.isChecked()
+    mode = annotation_mode.currentData()
+    self._batch_clear_annotations = mode == "clear"
+    self._batch_supplement_iou = response.supplement_iou.value() if mode == "supplement" else None
     self.image_index = self._batch_start_index
     self.text_prompt = ""
     self.run_tracker = False
 
-    model_type = self.auto_labeling_widget.model_manager.loaded_model_config[
-        "type"
-    ]
-
     if model_type == "remote_server":
-        batch_processing_mode = "default"
-        model = self.auto_labeling_widget.model_manager.loaded_model_config[
-            "model"
-        ]
-        if hasattr(model, "get_batch_processing_mode"):
-            batch_processing_mode = model.get_batch_processing_mode()
-        else:
-            batch_processing_mode = "default"
-        if batch_processing_mode is None:
-            self.auto_labeling_widget.model_manager.new_model_status.emit(
-                self.tr(
-                    "Batch processing is not supported for the current task."
-                )
-            )
-            return
-        if batch_processing_mode == "video":
+        if remote_mode == "video":
             self.run_tracker = True
             _start_batch_processing(self)
-        elif batch_processing_mode == "text_prompt":
+        elif remote_mode == "text_prompt":
             text_input_dialog = TextInputDialog(parent=self)
             self.text_prompt = text_input_dialog.get_input_text()
             if self.text_prompt:

@@ -93,7 +93,7 @@ def _resolve_model_type(model_hint, task):
 
     if model_type not in _CUSTOM_MODELS:
         raise ValueError(
-            f"AutoLabel does not support loading {family} {task} models"
+            f"The workbench does not support loading {family} {task} models"
         )
     return model_type
 
@@ -423,14 +423,21 @@ class ExportManager:
                 print(f"Error in export callback: {e}")
 
     def start_export(
-        self, project_path: str, export_format: str = "onnx"
+        self, project_path: str, export_format: str = "onnx", *, destination=None, settings=None
     ) -> Tuple[bool, str]:
-        if self.is_exporting:
+        return self.start_checkpoint_export(os.path.join(project_path, "weights", "best.pt"),
+                                            export_format, destination=destination, settings=settings)
+
+    def start_checkpoint_export(
+        self, weights_path: str, export_format: str = "onnx", *, destination=None, settings=None
+    ) -> Tuple[bool, str]:
+        if self.is_exporting or (self.export_thread and self.export_thread.is_alive()):
             return False, "Export already in progress"
 
-        weights_path = os.path.join(project_path, "weights", "best.pt")
-        if not self.external_environment and not os.path.exists(weights_path):
+        if not os.path.isfile(weights_path):
             return False, f"Model weights not found at: {weights_path}"
+        if destination is not None and not self.external_environment:
+            return False, "A training Python environment is required for this export"
 
         self.is_exporting = True
         self.stop_event.clear()
@@ -439,23 +446,26 @@ class ExportManager:
             if self.external_environment
             else self._export_worker
         )
-        self.export_thread = threading.Thread(
-            target=target, args=(weights_path, export_format), daemon=True
-        )
+        args = (weights_path, export_format)
+        if self.external_environment:
+            args += (destination, settings)
+        self.export_thread = threading.Thread(target=target, args=args, daemon=True)
         self.export_thread.start()
         return True, "Export started successfully"
 
-    def _external_export_worker(self, weights_path: str, export_format: str):
-        payload_path = create_worker_payload(
-            "export",
-            args={"format": export_format},
-            paths={
-                "data_directory": get_trainer_root_dir(),
-                "weights_path": weights_path,
-            },
-            options={"auto_install_packages": self.auto_install_packages},
-        )
+    def _external_export_worker(self, weights_path: str, export_format: str, destination=None, settings=None):
+        payload_path = None
         try:
+            paths = {"data_directory": get_trainer_root_dir(), "weights_path": weights_path}
+            if destination:
+                paths["destination"] = destination
+            payload_path = create_worker_payload(
+                "export",
+                args={"format": export_format, **{key: value for key, value in (settings or {}).items()
+                                                if value is not None}},
+                paths=paths,
+                options={"auto_install_packages": self.auto_install_packages},
+            )
             if self.stop_event.is_set():
                 return
             self.export_process = subprocess.Popen(
@@ -473,6 +483,9 @@ class ExportManager:
                 start_new_session=os.name != "nt",
                 creationflags=get_worker_creation_flags(),
             )
+            if self.stop_event.is_set():
+                terminate_process_tree(self.export_process)
+                return
             terminal_event_seen = False
             if self.export_process.stdout is None:
                 raise RuntimeError("Export process output is unavailable")
@@ -503,7 +516,8 @@ class ExportManager:
             self.is_exporting = False
             self.export_process = None
             try:
-                os.remove(payload_path)
+                if payload_path:
+                    os.remove(payload_path)
             except OSError:
                 pass
 

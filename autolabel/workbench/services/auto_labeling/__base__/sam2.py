@@ -6,6 +6,8 @@ import onnxruntime as ort
 from numpy import ndarray
 from PIL import Image
 
+from ..engines.build_onnx_engine import create_onnx_session
+
 
 def iter_point_batches(points, points_per_batch):
     """Yield consecutive slices of `points` of length <= points_per_batch."""
@@ -490,24 +492,15 @@ def _create_session(path: str, device: str) -> ort.InferenceSession:
     sess_options.enable_mem_pattern = True
     sess_options.enable_mem_reuse = True
 
-    if device.lower() == "gpu":
-        cuda_provider_options = {
-            "device_id": 0,
-            "gpu_mem_limit": 4 * 1024 * 1024 * 1024,
-            "arena_extend_strategy": "kSameAsRequested",
-            "cudnn_conv_algo_search": "DEFAULT",
-        }
-        providers = [
-            ("CUDAExecutionProvider", cuda_provider_options),
-            "CPUExecutionProvider",
-        ]
-    else:
-        providers = ["CPUExecutionProvider"]
-
-    session = ort.InferenceSession(
-        path, providers=providers, sess_options=sess_options
+    cuda_options = {
+        "device_id": 0,
+        "gpu_mem_limit": 4 * 1024 * 1024 * 1024,
+        "arena_extend_strategy": "kSameAsRequested",
+        "cudnn_conv_algo_search": "DEFAULT",
+    }
+    return create_onnx_session(
+        path, device, sess_options=sess_options, cuda_options=cuda_options
     )
-    return session
 
 
 class SAM2ImageEncoder:

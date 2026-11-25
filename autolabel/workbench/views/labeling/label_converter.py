@@ -734,6 +734,9 @@ class LabelConverter:
         self.save_json(self.custom_data, output_file)
 
     def yolo_to_custom(self, input_file, output_file, image_file, mode):
+        self.save_json(self.read_yolo_annotation(input_file, image_file, mode), output_file)
+
+    def read_yolo_annotation(self, input_file, image_file, mode):
         self.reset()
         img_w, img_h = self.get_image_size(image_file)
         image_size = np.array([img_w, img_h], np.float64)
@@ -775,7 +778,7 @@ class LabelConverter:
         self.custom_data["imagePath"] = osp.basename(image_file)
         self.custom_data["imageHeight"] = img_h
         self.custom_data["imageWidth"] = img_w
-        self.save_json(self.custom_data, output_file)
+        return self.custom_data
 
     def voc_to_custom(self, input_file, output_file, image_filename, mode):
         self.reset()
@@ -1364,15 +1367,16 @@ class LabelConverter:
         mode,
         skip_empty_files=False,
         obb_boundary_policy="skip",
+        *,
+        annotation=None,
     ):
         is_empty_file = True
-        if osp.exists(input_file):
-            data = self.read_json(input_file)
-        else:
+        if annotation is None and not osp.exists(input_file):
             if not skip_empty_files:
                 pathlib.Path(output_file).touch()
             return is_empty_file
 
+        data = self.read_json(input_file) if annotation is None else annotation
         image_width = data["imageWidth"]
         image_height = data["imageHeight"]
         # Validate before opening the destination: a mapping or mode error

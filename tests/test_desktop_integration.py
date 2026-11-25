@@ -20,10 +20,11 @@ def test_restored_workbench_has_video_dock(monkeypatch, tmp_path):
     window.settings = temporary_settings
     window.labeling_widget.view.settings = temporary_settings
     assert window.labeling_widget.view.__class__.__name__ == "LabelingWidget"
-    assert window.windowTitle() == "AutoLabel"
+    assert window.windowTitle() == "AutoLabelT"
     assert not window.windowIcon().isNull()
     assert not window.windowIcon().pixmap(64, 64).isNull()
     assert application.applicationName() == "AutoLabel"
+    assert application.applicationDisplayName() == "AutoLabelT"
     assert application.applicationVersion() == "0.1.0"
     assert window.video_dock.windowTitle() == "视频数据集"
     assert window.video_dock.sync_button.text() == "同步更新标签"
@@ -44,35 +45,42 @@ def test_restored_workbench_has_video_dock(monkeypatch, tmp_path):
     window.show()
     application.processEvents()
     assert window.video_dock.isVisible()
-    sidebar_action.trigger()
+    toolbar = window.findChild(QtWidgets.QToolBar, "autolabelToolbar")
+    assert toolbar.isVisible()
+    assert toolbar.findChild(QtWidgets.QLabel, "brandName").text() == "AutoLabelT"
+    assert toolbar.widgetForAction(toolbar.actions()[-1]) is window.sidebar_toggle
+    expanded_width = window.video_dock.width()
+    toggle_position = window.sidebar_toggle.pos()
+    window.sidebar_toggle.click()
+    application.processEvents()
+    assert window.video_dock.collapsed
     assert not window.video_dock.isVisible()
+    assert not window.video_dock.sidebar_scroll.isVisible()
+    assert window.sidebar_toggle.isVisible()
+    assert window.sidebar_toggle.pos() == toggle_position
+    assert window.video_dock.training_button.text() == "开始训练"
     assert sidebar_action.text() == ""
     assert not sidebar_action.icon().isNull()
     assert sidebar_action.toolTip() == "展开右侧边栏"
-    sidebar_action.trigger()
+    window.sidebar_toggle.click()
+    application.processEvents()
     assert window.video_dock.isVisible()
+    assert window.video_dock.width() == expanded_width
+    assert not window.video_dock.collapsed
+    assert window.video_dock.training_footer.isVisible()
     dialog = window.video_dock.model_dialog
-    assert dialog.tabs.count() == 2
-    assert dialog.image_models.topLevelItemCount() > 0
-    model_item = next(
-        dialog.image_models.topLevelItem(index).child(0)
-        for index in range(dialog.image_models.topLevelItemCount())
-        if dialog.image_models.topLevelItem(index).childCount())
-    selected = []
-    monkeypatch.setattr(view.auto_labeling_widget, "on_model_selected",
-                        lambda provider, name: selected.append((provider, name)))
-    dialog.image_models.setCurrentItem(model_item)
-    dialog.load_image_model()
-    assert selected == [model_item.data(0, QtCore.Qt.ItemDataRole.UserRole)]
-    window.video_dock.open_model_dialog("image")
-    assert dialog.tabs.currentWidget() is dialog.image_page
-    dialog.hide()
+    assert not dialog.findChildren(QtWidgets.QTabWidget)
+    assert not hasattr(dialog, "image_page")
+    assert dialog.native_models is view.auto_labeling_widget
+    native = view.auto_labeling_widget
+    assert native.model_manager.loaded_model_config is None
+    assert native.model_status_label.text() == native.model_manager.tr("No model selected.")
     view.auto_labeling_widget.model_selection_button.click()
     assert view.auto_labeling_widget.model_dropdown.isVisible()
     assert "import_local_weight" in view.auto_labeling_widget.model_dropdown.models_data["Custom"]
     view.auto_labeling_widget.model_dropdown.hide()
-    window.video_dock.open_model_dialog("video")
-    assert dialog.tabs.currentIndex() == 1
+    window.video_dock.open_model_dialog()
+    assert dialog.isVisible()
     dialog.hide()
     dock = window.video_dock
     dock.local_model_path = str(tmp_path / "staffv2.pt")
@@ -136,6 +144,45 @@ def test_restored_workbench_has_video_dock(monkeypatch, tmp_path):
         view.new_shapes_from_auto_labeling(AutoLabelingResult([], replace=True))
         assert palette_names(view) == ["hat", "hat2"]
     view.set_clean()
+    window.close()
+    application.processEvents()
+
+
+def test_video_sidebar_spacing_and_scroll_keep_controls_reachable(monkeypatch):
+    from PyQt6 import QtCore, QtWidgets
+    from autolabel.appearance import stylesheet
+    from autolabel.video_dock import VideoDatasetDock
+
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    window = QtWidgets.QMainWindow()
+    window.setStyleSheet(stylesheet("light"))
+    dock = VideoDatasetDock(window)
+    window.addDockWidget(QtCore.Qt.DockWidgetArea.RightDockWidgetArea, dock)
+    dock.stats.setText("构建中\n整批 1,560 / 2,000 张")
+    window.resize(1000, 1100)
+    window.show()
+    application.processEvents()
+
+    scroll = dock.sidebar_scroll
+    assert scroll.verticalScrollBar().maximum() == 0
+    for upper, lower in zip(dock.workflow_cards, dock.workflow_cards[1:]):
+        assert lower.y() - upper.geometry().bottom() - 1 == dock.workflow_layout.spacing() == 12
+    assert dock.batch_progress.y() - dock.start_button.geometry().bottom() - 1 >= 10
+    assert dock.stats.y() - dock.batch_progress.geometry().bottom() - 1 >= 8
+    assert dock.stats.height() >= 2 * dock.stats.fontMetrics().lineSpacing()
+
+    window.resize(1000, 500)
+    application.processEvents()
+    viewport = scroll.viewport()
+    assert scroll.verticalScrollBar().maximum() > 0
+    assert dock.workflow_body.width() == viewport.width()
+    footer_y = dock.training_button.mapTo(dock, QtCore.QPoint()).y()
+    scroll.verticalScrollBar().setValue(scroll.verticalScrollBar().maximum())
+    application.processEvents()
+    review_corner = dock.sync_button.mapTo(viewport, dock.sync_button.rect().bottomRight())
+    assert viewport.rect().contains(review_corner)
+    assert dock.training_button.mapTo(dock, QtCore.QPoint()).y() == footer_y
     window.close()
     application.processEvents()
 
@@ -286,8 +333,7 @@ def test_model_dialog_sources_and_required_labels(monkeypatch):
     assert "huggingface.co/facebook/sam3.1" in dialog.source_link.text()
     selected[0] = "yolo26_x"
     dialog.square_button.click()
-    assert dock.config.model_id == "yolo26_x"
-    assert dock.config.model_path.endswith("yolo26x.pt")
+    assert dock.config.model_id == "sam3_1"
     selected[0] = "grounding_dino"
     dialog.square_button.click()
     dock.prompts.setText(" ")
@@ -345,9 +391,8 @@ def test_grouped_parameter_dialog_keeps_baseline(monkeypatch):
     application.processEvents()
 
 
-def test_video_task_completion_discards_temporary_model(monkeypatch, tmp_path):
-    from types import SimpleNamespace
-    from PyQt6 import QtWidgets
+def test_video_task_completion_retains_session_model(monkeypatch, tmp_path):
+    from PyQt6 import QtCore, QtWidgets
     from autolabel.models.downloader import model_path
     from autolabel.video_dock import VideoDatasetDock
 
@@ -355,15 +400,17 @@ def test_video_task_completion_discards_temporary_model(monkeypatch, tmp_path):
     monkeypatch.setenv("AUTOLABEL_MODEL_DIR", str(tmp_path))
     monkeypatch.setenv("AUTOLABEL_SESSION_MODEL_DIR", str(tmp_path))
     application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    dock = VideoDatasetDock(QtWidgets.QMainWindow())
+    window = QtWidgets.QMainWindow()
+    dock = VideoDatasetDock(window)
     dock.model_combo.setCurrentIndex(dock.model_combo.findData("grounding_dino"))
     location = model_path("grounding_dino")
     location.mkdir(parents=True)
     (location / "model.safetensors").write_bytes(b"test")
-    dock.pipeline_worker = SimpleNamespace(config=SimpleNamespace(model_id="grounding_dino"))
+    dock.pipeline_worker = QtCore.QThread(dock)
     dock._pipeline_finished()
-    assert not location.exists()
-    assert "未下载" in dock.model_status.text()
-    assert dock.start_button.isEnabled()
-    dock.close()
+    assert (location / "model.safetensors").is_file()
+    assert dock.pipeline_worker is None
+    assert not dock.start_button.isEnabled() and dock.analyze_button.isEnabled()
+    window.deleteLater()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
     application.processEvents()

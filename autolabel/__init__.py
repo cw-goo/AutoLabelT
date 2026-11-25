@@ -1,1 +1,1 @@
-"""AutoLabel video dataset application."""
+"""AutoLabelT desktop workbench for annotation and model training."""

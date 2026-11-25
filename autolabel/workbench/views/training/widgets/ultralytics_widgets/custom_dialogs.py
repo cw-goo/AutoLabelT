@@ -115,7 +115,7 @@ class ExportFormatDialog(QDialog):
         self.ok_btn.setText(self.tr("Apply"))
         self.ok_btn.setToolTip(
             self.tr(
-                "Generate the model configuration and load it in AutoLabel"
+                "Generate the model configuration and load it in the workbench"
             )
         )
         self.ok_btn.setEnabled(True)

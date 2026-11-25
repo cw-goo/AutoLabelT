@@ -69,7 +69,16 @@ class DeviceManager:
                 logger.debug(f"Failed to get ONNX providers: {e}")
                 self._available_providers = []
 
-        return "CUDAExecutionProvider" in self._available_providers
+        if "CUDAExecutionProvider" in self._available_providers:
+            return True
+
+        try:
+            import torch
+
+            return torch.cuda.is_available()
+        except (ImportError, OSError, RuntimeError) as exc:
+            logger.debug("Failed to check PyTorch CUDA availability: %s", exc)
+            return False
 
     def _load_from_config(self) -> Optional[str]:
         try:

@@ -159,7 +159,7 @@ class GroundingDinoDetector:
             outputs, inputs.input_ids, threshold=self.confidence,
             text_threshold=max(0.15, self.confidence - 0.1),
             target_sizes=[(height, width)])[0]
-        names = list(prediction.get("text_labels", prediction.get("labels", [])))
+        names = list(prediction["text_labels"] if "text_labels" in prediction else prediction.get("labels", []))
         if names and isinstance(names[0], int):
             names = [self.prompts[index] if index < len(self.prompts) else ""
                      for index in names]

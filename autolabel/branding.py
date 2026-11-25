@@ -5,7 +5,10 @@ import os
 import sys
 
 
-APP_NAME = "AutoLabel"
+APP_NAME = "AutoLabelT"
+LAUNCH_COMMAND = "autolabelt"
+QT_APPLICATION_ID = "AutoLabel"  # Keep existing Qt settings and application data paths.
+APP_SUMMARY = "视频与图像标注 · 可视化训练"
 
 
 def app_version():
@@ -36,8 +39,8 @@ def startup_banner(use_color=False):
         edge,
         row(("[ A > ]  ", amber), (APP_NAME, cyan), (f"  v{app_version()}", white)),
         row(("", muted)),
-        row(("VIDEO", cyan), ("  >  FRAMES  >  LABELS  >  DATASET", white)),
-        row(("Intelligent video and image annotation", muted)),
+        row(("VIDEO", cyan), ("  >  FRAMES  >  LABELS  >  DATASET  >  TRAIN", white)),
+        row(("From frames and annotations to trained models", muted)),
         edge,
     ))
 
@@ -64,12 +67,13 @@ def write_startup_banner(stream=None):
     stream.flush()
 
 
-HELP_MESSAGE = """AutoLabel 智能视频与图像标注
+HELP_MESSAGE = f"""{APP_NAME}
+{APP_SUMMARY}
 
-启动：python -m autolabel
-帮助：python -m autolabel --help
-版本：python -m autolabel version
-配置：python -m autolabel config
+启动：{LAUNCH_COMMAND}
+帮助：{LAUNCH_COMMAND} --help
+版本：{LAUNCH_COMMAND} version
+配置：{LAUNCH_COMMAND} config
 
-标注画布基于 AutoLabel；许可信息见 LICENSES/。
+标注画布基于 X-AnyLabeling。许可信息见 LICENSE。
 """

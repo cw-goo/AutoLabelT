@@ -25,9 +25,10 @@ class LocalYOLOImageModel(Model):
 
     def __init__(self, model_config, on_message):
         super().__init__(model_config, on_message)
-        from ultralytics import YOLO
+        from ultralytics import YOLO, RTDETR
 
-        self.model = YOLO(self.config["model_path"])
+        loader = RTDETR if self.config.get("model_family") == "rtdetr" else YOLO
+        self.model = loader(self.config["model_path"])
         if self.model.task != "detect":
             raise ValueError("本地权重目前须为 YOLO 目标检测模型")
         self.class_names = list(self.config["classes"])

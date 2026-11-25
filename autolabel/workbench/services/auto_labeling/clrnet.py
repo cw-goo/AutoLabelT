@@ -8,10 +8,10 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 from PyQt6 import QtCore
 from PyQt6.QtCore import QCoreApplication
 
-from autolabel.workbench.app_info import __preferred_device__
 from autolabel.workbench.views.labeling.shape import Shape
 from autolabel.workbench.views.labeling.logger import logger
 from autolabel.workbench.views.labeling.utils.opencv import qt_img_to_rgb_cv_img
+from .engines.build_onnx_engine import create_onnx_session
 from .model import Model
 from .types import AutoLabelingResult
 
@@ -58,13 +58,8 @@ class CLRNet(Model):
             self.sess_opts.inter_op_num_threads = int(
                 os.environ["OMP_NUM_THREADS"]
             )
-        self.providers = ["CPUExecutionProvider"]
-        if __preferred_device__ == "GPU":
-            self.providers = ["CUDAExecutionProvider"]
-
-        self.net = ort.InferenceSession(
+        self.net = create_onnx_session(
             model_abs_path,
-            providers=self.providers,
             sess_options=self.sess_opts,
         )
         self.n_offsets = self.config["n_offsets"]

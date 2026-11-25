@@ -3,7 +3,8 @@ from copy import deepcopy
 
 import cv2
 import numpy as np
-import onnxruntime
+
+from .engines.build_onnx_engine import create_onnx_session
 
 
 class SegmentAnythingONNX:
@@ -17,20 +18,13 @@ class SegmentAnythingONNX:
         self.decoder_model_path = decoder_model_path
 
         # Load models
-        self.providers = onnxruntime.get_available_providers()
 
-        # Pop TensorRT Runtime due to crashing issues
-        # TODO: Add back when TensorRT backend is stable
-        self.providers = [
-            p for p in self.providers if p != "TensorrtExecutionProvider"
-        ]
-
-        self.encoder_session = onnxruntime.InferenceSession(
-            encoder_model_path, providers=self.providers
+        self.encoder_session = create_onnx_session(
+            encoder_model_path
         )
         self.encoder_input_name = self.encoder_session.get_inputs()[0].name
-        self.decoder_session = onnxruntime.InferenceSession(
-            decoder_model_path, providers=self.providers
+        self.decoder_session = create_onnx_session(
+            decoder_model_path
         )
 
     def get_input_points(self, prompt):
@@ -66,8 +60,8 @@ class SegmentAnythingONNX:
         """
         # Lazy initialization
         if self.encoder_session is None:
-            self.encoder_session = onnxruntime.InferenceSession(
-                self.encoder_model_path, providers=self.providers
+            self.encoder_session = create_onnx_session(
+                self.encoder_model_path
             )
             self.encoder_input_name = self.encoder_session.get_inputs()[0].name
 

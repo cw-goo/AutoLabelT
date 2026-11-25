@@ -1,4 +1,4 @@
-"""AutoLabel-only colors and subtle button motion for the integrated workbench."""
+"""Colors and subtle button motion for the integrated workbench."""
 
 from PyQt6 import QtCore, QtWidgets
 
@@ -32,8 +32,9 @@ def stylesheet(mode):
         QMenu::item { padding: 7px 22px; border-radius: 5px; }
         QMenu::item:selected { background: %(accent_soft)s; color: %(accent)s; }
         QToolBar#autolabelToolbar { background: #14283b; border: 0; border-bottom: 2px solid %(accent)s; spacing: 7px; padding: 7px 12px; }
-        QToolBar#autolabelToolbar QLabel#brandName { color: #f6fcfd; font-size: 15px; font-weight: 700; }
-        QToolBar#autolabelToolbar QLabel#brandTagline { color: #9bc9cf; font-size: 11px; padding-left: 9px; }
+        QToolBar#autolabelToolbar QLabel#brandName { color: #f6fcfd; font-size: 17px; font-weight: 700; }
+        QToolBar#autolabelToolbar QLabel#brandTagline { color: %(orange)s; font-size: 12px;
+            font-weight: 600; border-left: 1px solid #456477; padding-left: 9px; }
         QToolBar#autolabelToolbar QToolButton { background: #24435a; color: #f5fcfd; border: 1px solid #355970; border-radius: 8px; padding: 6px 12px; }
         QToolBar#autolabelToolbar QToolButton:hover { background: #2d596d; border-color: #58c5c1; }
         QToolBar#autolabelToolbar QToolButton#sidebarToggleButton { background: transparent; border: 1px solid #456477; border-radius: 8px; padding: 4px; }
@@ -44,8 +45,46 @@ def stylesheet(mode):
         QToolBar#ToolsToolBar QToolButton:hover { background: %(accent_soft)s; }
         QToolBar#ToolsToolBar QToolButton:checked { background: %(accent_soft)s; border-left: 2px solid %(accent)s; }
         QDockWidget#videoDatasetDock { color: %(text)s; }
+        QWidget#videoSidebarShell { background: %(background)s; }
+        QLabel#sidebarHeading { color: %(text)s; font-size: 15px; font-weight: 700; }
         QDockWidget#videoDatasetDock::title { background: %(surface)s; color: %(text)s; padding: 8px; border-bottom: 1px solid %(border)s; }
         QScrollArea#videoDockScroll, QWidget#videoDockContent { background: %(background)s; border: 0; }
+        QWidget#videoDockContent { font-size: 14px; }
+        QFrame[workflowCard="true"] { background: %(surface)s; border: 1px solid %(border)s;
+            border-radius: 12px; }
+        QFrame[workflowCard="true"] QLabel { color: %(text)s; }
+        QLabel#workflowBadge { background: %(accent_soft)s; color: %(accent)s;
+            border-radius: 5px; font-size: 11px; font-weight: 700; }
+        QLabel#workflowCardTitle { color: %(text)s; font-size: 16px; font-weight: 700; }
+        QLabel#workflowCardCaption { color: %(muted)s; font-size: 12px; }
+        QLabel#workflowSummary { color: %(muted)s; }
+        QWidget#videoDockContent QPushButton { min-height: 18px; padding: 3px 7px;
+            border-radius: 7px; }
+        QWidget#videoDockContent QSpinBox, QWidget#videoDockContent QDoubleSpinBox {
+            min-height: 18px; padding: 3px 6px; border-radius: 7px; }
+        QWidget#videoDockContent QPlainTextEdit { padding: 3px 6px; border-radius: 7px; }
+        QProgressBar#videoBatchProgress { min-height: 10px; max-height: 10px; border-radius: 5px; }
+        QProgressBar#videoBatchProgress::chunk { border-radius: 5px; }
+        QFrame#samplingAnalysisResults { background: %(field)s; border: 1px solid %(border)s;
+            border-radius: 7px; }
+        QTreeWidget#videoQueue, QTreeWidget#samplingPlanTable {
+            background: %(field)s; alternate-background-color: %(background)s;
+            color: %(text)s; border: 1px solid %(border)s; border-radius: 7px;
+            outline: 0; }
+        QTreeWidget#videoQueue::item, QTreeWidget#samplingPlanTable::item {
+            min-height: 21px; padding: 0 3px; border: 0; }
+        QTreeWidget#videoQueue::item:selected { background: %(accent_soft)s; color: %(accent)s; }
+        QTreeWidget#videoQueue QHeaderView::section, QTreeWidget#samplingPlanTable QHeaderView::section {
+            background: %(background)s;
+            color: %(muted)s; border: 0; border-bottom: 1px solid %(border)s;
+            padding: 2px 4px; font-size: 12px; }
+        QPushButton#startTrainingButton { background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+            stop:0 #102c44,stop:1 #164b5c); color: #ffffff; border: 1px solid #23596d;
+            border-radius: 10px; font-size: 13px; font-weight: 700; padding: 4px 14px; }
+        QPushButton#startTrainingButton:hover { background: #1b5268; border-color: #348299; }
+        QPushButton#startTrainingButton:pressed { background: #0b2236; }
+        QPushButton#startTrainingButton:disabled { background: %(track)s;
+            color: %(muted)s; border-color: %(border)s; }
         QFrame#workflowHeader { background: #14283b; border: 1px solid #2b5266; border-radius: 13px; }
         QLabel#workflowTitle { color: #f4fcfd; font-size: 17px; font-weight: 700; }
         QLabel#workflowSubtitle { color: #afd6dc; font-size: 11px; }
@@ -54,10 +93,35 @@ def stylesheet(mode):
         QDockWidget#videoDatasetDock QGroupBox { background: %(surface)s; color: %(text)s; border: 1px solid %(border)s; border-radius: 12px; margin-top: 13px; padding: 13px 10px 10px; font-weight: 600; }
         QDockWidget#videoDatasetDock QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; left: 12px; padding: 0 7px; color: %(accent)s; }
         QDialog#modelLoadDialog, QDialog#modelSquareDialog, QDialog#parameterDialog { background: %(background)s; }
+        QDialog#modelLoadDialog QLabel, QDialog#modelLoadDialog QCheckBox,
+        QDialog#modelSquareDialog QLabel, QDialog#modelSquareDialog QCheckBox { color: %(text)s; }
+        QDialog#modelLoadDialog QLabel[tone="muted"],
+        QDialog#modelSquareDialog QLabel[tone="muted"] { color: %(muted)s; }
         QLabel#dialogHeading { color: %(text)s; font-size: 21px; font-weight: 700; }
         QLabel#dialogHint { color: %(muted)s; font-size: 11px; }
         QFrame[modelCard="true"] { background: %(surface)s; border: 1px solid %(border)s; border-radius: 12px; }
         QLabel#modelColumnTitle { color: %(accent)s; font-size: 14px; font-weight: 700; }
+        QDialog#modelSquareDialog QTreeWidget#modelSquareTree {
+            background: %(surface)s; alternate-background-color: %(background)s;
+            color: %(text)s; border: 1px solid %(border)s; border-radius: 12px;
+            outline: 0; padding: 6px; }
+        QTreeWidget#modelSquareTree::item { min-height: 30px; padding: 3px 5px;
+            border: 0; border-radius: 0; }
+        QTreeWidget#modelSquareTree::item:hover { background: transparent; }
+        QTreeWidget#modelSquareTree::item:selected { background: %(background)s; color: %(text)s; }
+        QTreeWidget#modelSquareTree::branch { background: transparent; border: 0; }
+        QTreeWidget#modelSquareTree QHeaderView::section { background: %(background)s;
+            color: %(muted)s; border: 0; padding: 8px 5px; }
+        QFrame#modelInfoPanel { background: %(surface)s; border: 1px solid %(border)s; border-radius: 12px; }
+        QFrame#modelInfoPanel QLabel { color: %(text)s; background: transparent; border: 0; }
+        QFrame#modelInfoPanel QLabel#modelInfoTitle { font-size: 21px; font-weight: 700; }
+        QFrame#modelInfoPanel QLabel#modelTaskBadge { background: %(accent_soft)s;
+            color: %(accent)s; border-radius: 6px; padding: 5px 8px; font-size: 12px; }
+        QFrame#modelInfoPanel QLabel#modelStateBadge { background: %(background)s;
+            color: %(muted)s; border-radius: 6px; padding: 5px 8px; font-size: 12px; }
+        QFrame#modelInfoDivider { background: %(border)s; border: 0; }
+        QFrame#modelInfoPanel QLabel#modelUsageHint { background: %(accent_soft)s;
+            color: %(accent)s; border-radius: 8px; padding: 11px; }
         QPushButton[selected="true"] { background: %(accent_soft)s; color: %(accent)s; border-color: %(accent)s; font-weight: 700; }
         QListWidget#modelSourceList { background: %(field)s; color: %(text)s; border: 1px solid %(border)s; border-radius: 8px; outline: 0; padding: 4px; }
         QListWidget#modelSourceList::item { padding: 11px 8px; border-radius: 6px; }

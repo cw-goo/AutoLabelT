@@ -1,6 +1,5 @@
 import os
 import traceback
-import onnxruntime
 import numpy as np
 
 from copy import deepcopy
@@ -23,7 +22,7 @@ from autolabel.workbench.services.auto_labeling.utils import calculate_rotation_
 from .model import Model
 from .types import AutoLabelingResult
 from .lru_cache import LRUCache
-from .engines.build_onnx_engine import OnnxBaseModel
+from .engines.build_onnx_engine import OnnxBaseModel, create_onnx_session
 from .__base__.grounding_dino import GroundingDINOBase
 
 
@@ -35,18 +34,13 @@ class SegmentAnythingONNX:
         self.input_size = (684, 1024)
 
         # Load models
-        providers = onnxruntime.get_available_providers()
 
-        # Pop TensorRT Runtime due to crashing issues
-        # TODO: Add back when TensorRT backend is stable
-        providers = [p for p in providers if p != "TensorrtExecutionProvider"]
-
-        self.encoder_session = onnxruntime.InferenceSession(
-            encoder_model_path, providers=providers
+        self.encoder_session = create_onnx_session(
+            encoder_model_path
         )
         self.encoder_input_name = self.encoder_session.get_inputs()[0].name
-        self.decoder_session = onnxruntime.InferenceSession(
-            decoder_model_path, providers=providers
+        self.decoder_session = create_onnx_session(
+            decoder_model_path
         )
 
     def run_encoder(self, encoder_inputs):

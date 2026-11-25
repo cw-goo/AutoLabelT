@@ -16,37 +16,28 @@ def application(monkeypatch):
     app.processEvents()
 
 
-def test_square_uses_native_providers_and_models_and_marks_video_compatibility(application):
+def test_square_only_offers_grounding_dino_and_sam(application):
     from PyQt6 import QtCore
-    from autolabel.model_square import ModelSquareDialog
+    from autolabel.model_square import ModelSquareDialog, SQUARE_MODEL_IDS
 
-    data = {"Vendor One": {
-        "yolo11s-r20240930": {"display_name": "YOLO11s"},
-        "segmentation-model": {"display_name": "Segment model"},
-    }, "Custom": {
-        "load_custom_model": {"display_name": "Load YAML"},
-        "import_local_weight": {"display_name": "Import weight"},
-        "local-model": {"display_name": "My model"},
-    }}
-    native = SimpleNamespace(init_model_data=lambda: data)
+    native = SimpleNamespace(init_model_data=lambda: pytest.fail("unrelated native models were queried"))
     dialog = ModelSquareDialog(native)
-    dialog.only_video.setChecked(False)
     groups = {dialog.tree.topLevelItem(i).text(0): dialog.tree.topLevelItem(i)
               for i in range(dialog.tree.topLevelItemCount())}
-    assert [groups["Vendor One"].child(i).text(0) for i in range(2)] == ["YOLO11s", "Segment model"]
-    assert groups["Custom"].childCount() == 1
-    supported, unsupported = [groups["Vendor One"].child(i) for i in range(2)]
-    dialog.tree.setCurrentItem(unsupported)
-    assert not dialog.choose_button.isEnabled()
-    assert unsupported.text(1) == "仅图片标注"
+    assert set(groups) == {"IDEA-Research", "Meta"}
+    offered = {group.child(i).data(0, QtCore.Qt.ItemDataRole.UserRole)
+               for group in groups.values() for i in range(group.childCount())}
+    assert offered == set(SQUARE_MODEL_IDS)
+    assert len(offered) == 4
+    supported = groups["IDEA-Research"].child(0)
     dialog.tree.setCurrentItem(supported)
     assert dialog.choose_button.isEnabled()
     assert dialog.selected_model_id is None
-    assert supported.data(0, QtCore.Qt.ItemDataRole.UserRole) == "yolo11_s"
-    dialog.search.setText("Vendor One")
-    assert not groups["Vendor One"].isHidden() and groups["Custom"].isHidden()
+    assert supported.data(0, QtCore.Qt.ItemDataRole.UserRole) == "grounding_dino"
+    dialog.search.setText("IDEA-Research")
+    assert not groups["IDEA-Research"].isHidden() and groups["Meta"].isHidden()
     dialog.accept_selection()
-    assert dialog.selected_model_id == "yolo11_s"
+    assert dialog.selected_model_id == "grounding_dino"
     dialog.deleteLater()
 
 
@@ -107,3 +98,26 @@ def test_local_weight_cancel_invalid_and_success(application, tmp_path, monkeypa
     assert weight.read_bytes() == b"local weight"
     assert dock.weight_label.text() == weight.name
     dock.close()
+
+
+def test_model_details_follow_selection_and_filter_clears_hidden_model(application):
+    from PyQt6 import QtCore
+    from autolabel.model_square import ModelSquareDialog
+
+    dialog = ModelSquareDialog()
+    items = {}
+    for index in range(dialog.tree.topLevelItemCount()):
+        provider = dialog.tree.topLevelItem(index)
+        for row in range(provider.childCount()):
+            item = provider.child(row)
+            items[item.data(0, QtCore.Qt.ItemDataRole.UserRole)] = item
+    dialog.tree.setCurrentItem(items["grounding_dino"])
+    assert dialog.info.facts["许可证"].text() == "Apache-2.0"
+    dialog.tree.setCurrentItem(items["sam3_1"])
+    assert dialog.info.facts["许可证"].text() == "Meta SAM 3 License"
+    assert "权重授权" in dialog.info.guidance.text()
+    dialog.search.setText("no such model")
+    assert not dialog.choose_button.isEnabled()
+    assert dialog.info.facts["许可证"].text() == "—"
+    assert dialog.selected_model_id is None
+    dialog.close()

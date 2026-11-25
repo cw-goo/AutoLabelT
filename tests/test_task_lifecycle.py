@@ -45,7 +45,8 @@ def test_running_task_blocks_conflicting_actions(application, monkeypatch, worke
     dock._model_task("test")
     busy[0] = False
     dock._refresh_task_controls()
-    assert dock.start_button.isEnabled() and dock.output_button.isEnabled()
+    assert dock.analyze_button.isEnabled() and dock.output_button.isEnabled()
+    assert not dock.start_button.isEnabled()
     dock.close()
 
 
@@ -62,6 +63,34 @@ def test_cancelled_model_test_cannot_be_marked_ready(monkeypatch):
     worker.completed.connect(completed.append)
     worker.run()
     assert failures and not completed
+
+
+@pytest.mark.parametrize("return_code, expected", [(0, "training_completed"), (1, "training_error")])
+def test_training_reports_terminal_event_after_reaping_worker(tmp_path, monkeypatch, return_code, expected):
+    from io import StringIO
+    from autolabel.workbench.services.auto_training.ultralytics import trainer
+
+    payload = tmp_path / "payload.json"
+    payload.write_text("{}", encoding="utf-8")
+    manager = trainer.TrainingManager()
+    manager.is_training = True
+    events = []
+    manager.callbacks = [
+        lambda event, data: events.append((event, manager.is_training, manager.training_process, payload.exists()))
+    ]
+
+    def wait():
+        assert not any(event[0] == "training_completed" for event in events)
+        assert manager.is_training
+        return return_code
+
+    process = SimpleNamespace(
+        stdout=StringIO(trainer.TRAINING_WORKER_EVENT_PREFIX + '{"event":"training_completed"}\n'),
+        wait=wait,
+    )
+    monkeypatch.setattr(trainer.subprocess, "Popen", lambda *args, **kwargs: process)
+    manager._run_training(str(payload))
+    assert events[-1] == (expected, False, None, False)
 
 
 def test_silent_installer_can_be_cancelled_without_stdout(monkeypatch, tmp_path):

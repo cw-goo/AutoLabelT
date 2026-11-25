@@ -5,10 +5,10 @@ import onnxruntime as ort
 from PyQt6 import QtCore
 from PyQt6.QtCore import QCoreApplication
 
-from autolabel.workbench.app_info import __preferred_device__
 from autolabel.workbench.views.labeling.shape import Shape
 from autolabel.workbench.views.labeling.logger import logger
 from autolabel.workbench.views.labeling.utils.opencv import qt_img_to_rgb_cv_img
+from .engines.build_onnx_engine import create_onnx_session
 from .model import Model
 from .types import AutoLabelingResult
 from .pose.dwpose_onnx import inference_pose
@@ -70,23 +70,10 @@ class YOLOX_DWPose(Model):
         if "OMP_NUM_THREADS" in os.environ:
             sess_opts.inter_op_num_threads = int(os.environ["OMP_NUM_THREADS"])
 
-        if __preferred_device__ == "GPU":
-            ox_providers = ["CUDAExecutionProvider"]
-            backend = cv2.dnn.DNN_BACKEND_CUDA
-            cv_providers = cv2.dnn.DNN_TARGET_CUDA
-        else:
-            ox_providers = ["CPUExecutionProvider"]
-            backend = cv2.dnn.DNN_BACKEND_OPENCV
-            cv_providers = cv2.dnn.DNN_TARGET_CPU
-
-        self.det_net = ort.InferenceSession(
-            det_model_abs_path,
-            providers=ox_providers,
-            sess_options=sess_opts,
+        self.det_net = create_onnx_session(
+            det_model_abs_path, sess_options=sess_opts
         )
-        self.pose_net = cv2.dnn.readNetFromONNX(pose_model_abs_path)
-        self.pose_net.setPreferableBackend(backend)
-        self.pose_net.setPreferableTarget(cv_providers)
+        self.pose_net = create_onnx_session(pose_model_abs_path, sess_options=sess_opts)
 
         self.p6 = self.config["p6"]
         self.draw_det_box = self.config["draw_det_box"]

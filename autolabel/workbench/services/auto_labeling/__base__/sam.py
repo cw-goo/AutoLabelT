@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
-import onnxruntime as ort
+
+from ..engines.build_onnx_engine import create_onnx_session
 
 from typing import Tuple
 from copy import deepcopy
@@ -239,17 +240,12 @@ class EdgeSAMONNX(object):
         self, encoder_model_path, decoder_model_path, target_length
     ) -> None:
         # Load models
-        providers = ort.get_available_providers()
 
-        # Pop TensorRT Runtime due to crashing issues
-        # TODO: Add back when TensorRT backend is stable
-        providers = [p for p in providers if p != "TensorrtExecutionProvider"]
-
-        self.encoder_session = ort.InferenceSession(
-            encoder_model_path, providers=providers
+        self.encoder_session = create_onnx_session(
+            encoder_model_path
         )
-        self.decoder_session = ort.InferenceSession(
-            decoder_model_path, providers=providers
+        self.decoder_session = create_onnx_session(
+            decoder_model_path
         )
 
         self.encoder_input_name = self.encoder_session.get_inputs()[0].name

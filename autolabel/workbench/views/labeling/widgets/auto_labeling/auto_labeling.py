@@ -135,6 +135,7 @@ class AutoLabelingWidget(QWidget):
 
         self.skip_auto_prediction = False
         self.model_manager = ModelManager()
+        self.model_status_label.setText(self.model_manager.tr("No model selected."))
         self.model_manager.new_model_status.connect(self.on_new_model_status)
         self.new_model_selected.connect(self.model_manager.load_model)
         self.new_custom_model_selected.connect(
