@@ -26,8 +26,8 @@ AutoLabelT 在同一个桌面应用里完成视频抽帧、图像标注、人工
 准备好 Git 和 Conda，在终端运行以下命令。环境文件会创建 Python 3.11 环境并安装应用及常用模型依赖。
 
 ```bash
-git clone https://github.com/cw-goo/Autolabel.git
-cd Autolabel
+git clone https://github.com/cw-goo/AutoLabelT.git
+cd AutoLabelT
 conda env create --file environment.yml
 conda activate autolabel
 autolabelt
@@ -97,7 +97,7 @@ YOLO TXT 每行使用 `class_id center_x center_y width height`，坐标按图�
 - 查阅算法基线、标注同步和数据保护机制。 [架构说明](docs/architecture.zh-CN.md)
 - 查找生成文件并构建分发包。 [本地输出与构建说明](docs/artifacts.md)
 
-提交改动前请阅读 [贡献指南](AGENTS.md)。反馈问题时，请附上操作系统、Python 版本、模型名称、复现步骤及相关日志。 [GitHub Issues](https://github.com/cw-goo/Autolabel/issues)
+提交改动前请阅读 [贡献指南](AGENTS.md)。反馈问题时，请附上操作系统、Python 版本、模型名称、复现步骤及相关日志。 [GitHub Issues](https://github.com/cw-goo/AutoLabelT/issues)
 
 ```bash
 python -m pip install -e ".[test]"
