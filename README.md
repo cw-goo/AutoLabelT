@@ -11,7 +11,7 @@
     <a href="#快速开始">🚀 快速开始</a> ·
     <a href="#使用流程">使用流程</a> ·
     <a href="#数据集输出">数据集输出</a> ·
-    <a href="#文档与贡献">文档与贡献</a>
+    <a href="#致谢与许可">致谢与许可</a>
   </p>
 </div>
 
@@ -105,27 +105,8 @@ dataset/
 
 YOLO TXT 每行使用 `class_id center_x center_y width height`，坐标按图像尺寸归一化。复核同步按图片的相对路径写回标签，例如 `images/train/frame.jpg` 对应 `labels/train/frame.txt`。没有复核 JSON 的图片会保留原有 TXT。
 
-## 文档与贡献
-
-- 设置目标张数、调整采样计划和理解补采规则。 [视频批量处理](docs/video-batch.zh-CN.md)
-- 划分训练集与验证集、监控训练并导出 ONNX。 [可视化训练中心](docs/training.zh-CN.md)
-- 查阅算法基线、标注同步和数据保护机制。 [架构说明](docs/architecture.zh-CN.md)
-- 查找生成文件并构建分发包。 [本地输出与构建说明](docs/artifacts.md)
-
-提交改动前请阅读 [贡献指南](AGENTS.md)。反馈问题时，请附上操作系统、Python 版本、模型名称、复现步骤及相关日志。 [GitHub Issues](https://github.com/cw-goo/AutoLabelT/issues)
-
-```bash
-python -m pip install -e ".[test]"
-python -m pytest -q tests
-```
-
 ## 致谢与许可
 
 AutoLabelT 的标注工作台基于 **X-AnyLabeling 4.2.0**，源码位于 `autolabel/workbench/`，保留上游作者和许可声明。感谢上游项目及其贡献者。 [X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling)
 
 本项目采用 **GPL-3.0** 许可。第三方组件和模型权重适用各自的许可及访问条件。 [许可证](LICENSE) · [第三方声明](THIRD_PARTY_NOTICES.md)
-
-### 演示素材
-
-- **照片**由 Quino Al 和 Aanya Chakravarti 拍摄。 [自行车赛](https://unsplash.com/photos/bike-race-on-street-during-daytime-D3sfNUXLVFc) · [城市街口](https://unsplash.com/photos/busy-city-street-with-pedestrians-and-cars-kvaaDtr4csU) · [Unsplash 许可](https://unsplash.com/license)
-- **视频**由 David McBee 和 Israyosoy S. 拍摄。 [旧金山街景](https://www.pexels.com/video/a-city-street-with-cars-and-pedestrians-crossing-the-street-26732129/) · [墨西哥城街景](https://www.pexels.com/video/a-city-street-with-cars-and-people-walking-20474313/) · [Pexels 许可](https://www.pexels.com/license/)
