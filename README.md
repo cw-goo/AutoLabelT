@@ -1,13 +1,14 @@
 <div align="center">
   <img src="autolabel/assets/logo.png" alt="AutoLabelT 标志" width="96" height="96" />
   <h1>AutoLabelT</h1>
-  <p><strong>从原始视频到目标检测模型的桌面工作台</strong></p>
+  <p><strong>视频建集、图像标注与目标检测训练工作台</strong></p>
   <p>
     <a href="pyproject.toml"><img src="https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776ab?style=flat-square&amp;logo=python&amp;logoColor=white" alt="Python 3.11 / 3.12" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-087f8c?style=flat-square" alt="GPL-3.0 许可证" /></a>
   </p>
   <p>
-    <a href="#快速开始">快速开始</a> ·
+    <a href="#核心功能">核心功能</a> ·
+    <a href="#快速开始">🚀 快速开始</a> ·
     <a href="#使用流程">使用流程</a> ·
     <a href="#数据集输出">数据集输出</a> ·
     <a href="#模型支持">模型支持</a> ·
@@ -15,17 +16,24 @@
   </p>
 </div>
 
-AutoLabelT 在同一个桌面应用里完成视频抽帧、图像标注、人工复核和模型训练。它根据检测到的目标数量调整采样步长，按目标高度和小目标占比筛选画面。已有图片或 YOLO 数据集也可直接进入标注和训练流程。
+**AutoLabelT** 把视频素材变成可检查、可编辑、可训练的目标检测数据集。可以从多段视频中筛选含目标的画面并生成初始标注，也可以打开已有图片或 YOLO 数据集，从补标、复核或训练开始。
 
-**批量视频 → 筛选样本并生成标注 → 画布复核 → YOLO / RT-DETR 训练 → ONNX 导出**
+**视频或图像 → 自动标注 → 画布复核 → 同步 YOLO 标签 → 训练与 ONNX 导出**
 
 ![AutoLabelT 自动标注自行车赛照片，画布中以不同颜色区分骑手、自行车和汽车](docs/images/demo-cycling-annotation.png)
 
-<sub>自行车赛标注示例。YOLO11n 生成 18 个检测框，可在画布上逐个复核。照片由 Quino Al 拍摄。 <a href="https://unsplash.com/photos/bike-race-on-street-during-daytime-D3sfNUXLVFc">原图</a> · <a href="https://unsplash.com/license">Unsplash 许可</a></sub>
+## 核心功能
+
+| 功能 | 可以做什么 |
+| --- | --- |
+| 🎬 **视频批量建集** | 设置目标张数和最小帧间隔，预分析每段视频能贡献多少样本，再按目标高度、小目标占比和动态步长筛选画面。 |
+| 🏷️ **自动标注与补标** | 用本地模型或预训练模型生成初始框，或从已有结果继续补标，保留已经修正过的标注。 |
+| 🔍 **复核与标签同步** | 在画布上查看、修改或删除检测框，检查低置信度目标，再把保存的复核结果同步回 YOLO TXT。 |
+| 📈 **训练与模型导出** | 为 YOLO 或 RT-DETR 准备数据划分，查看损失、验证指标和训练日志，完成后导出 ONNX。 |
 
 ## 快速开始
 
-准备好 Git 和 Conda，在终端运行以下命令。环境文件会创建 Python 3.11 环境并安装应用及常用模型依赖。
+准备好 Git 和 Conda。以下命令会创建 Python 3.11 环境、安装应用和模型依赖，并启动桌面工作台。
 
 ```bash
 git clone https://github.com/cw-goo/AutoLabelT.git
@@ -35,7 +43,7 @@ conda activate autolabel
 autolabelt
 ```
 
-启动后，可以直接打开图片开始手工标注。视频自动标注需要先加载检测权重。权重可从本地导入，部分模型也可在应用中下载。
+启动后可直接打开图片手工标注。需要自动检测时，从本地导入权重，或在应用中下载受管模型。初次使用视频工作流，可先用一段短视频预分析，确认类别和采样参数后再添加更多素材。
 
 <details>
 <summary>更新环境、GPU 和安装包</summary>
@@ -50,33 +58,36 @@ autolabelt
 
 ### 从视频生成数据集
 
-1. 在右侧“视频数据集”面板添加视频并选择输出目录。打开“模型加载”，选择检测模型、配置类别，再点击“测试模型”。受管模型需要先下载权重。
-2. 首次可以试设目标为 **100 张**、最小间隔为 **25 帧**。点击“预分析并推荐”查看各视频的预计分配，再打开“调整参数”检查并点击“使用参数”。张数填 `0` 时按动态步长扫描。
-3. 点击“开始构建”，查看样本数和淘汰原因。用“在画布中复核”检查标注并修正检测框，再点击“同步更新标签”，将复核结果写回 YOLO TXT。
+1. **准备素材和模型。** 在“视频数据集”面板添加视频、安排处理顺序并选择输出目录。打开“模型加载”，设置检测类别，加载权重后测试模型。
+2. **预分析并确认。** 首次可试设目标为 **100 张**、最小间隔为 **25 帧**。点击“预分析并推荐”查看各视频的分配与初始间隔，再到“调整参数”确认。张数设为 `0` 时，应用会按动态步长扫描。
+3. **构建并复核。** 开始构建后可查看保存数量和淘汰原因。选中样本进入画布，调整位置不准的框、删除误检或补上漏标。
+4. **同步训练标签。** 保存复核结果后，点击“同步更新标签”，将修改写回对应的 YOLO TXT。数据集仍保留样本的来源视频、帧号和运行配置。
 
-指定张数时，软件会在合格样本不足的情况下记录缺口。批量分配、补采与采样参数见 [视频批量处理指南](docs/video-batch.zh-CN.md)。
+指定张数时，应用会根据各段视频的合格率调整分配并补采。合格样本不足时，任务会显示实际张数和缺口。 [视频批量处理指南](docs/video-batch.zh-CN.md)
 
 ![AutoLabelT 视频数据集工作台，右侧显示两个视频的采样分配和已保存的 36 张样本，中央画布展示带行人检测框的抽帧样本](docs/images/demo-video-review.png)
 
-<sub>两段街景视频实际生成 36 张样本。右侧显示每段视频的分配张数和初始间隔，画布显示抽出的行人样本。 <a href="https://www.pexels.com/video/a-city-street-with-cars-and-pedestrians-crossing-the-street-26732129/">David McBee 视频</a> · <a href="https://www.pexels.com/video/a-city-street-with-cars-and-people-walking-20474313/">Israyosoy S. 视频</a> · <a href="https://www.pexels.com/license/">Pexels 许可</a></sub>
+### 为已有图片标注、补标和复核
 
-### 为已有图片补标
+打开图片目录即可在画布上绘制或编辑标注。已有 YOLO 检测数据集时，可打开包含 `images/`、`labels/` 和 `classes.txt` 的目录并继续处理。
 
-在画布中打开图片目录或已有标注的数据集，例如带有 `images/`、`labels/` 和 `classes.txt` 的 YOLO 数据集。加载图片模型后，在“自动运行”中选择“保留旧标注，只补漏标”。补标会依据交并比（IoU，默认 `0.60`）跳过与现有框高度重叠的预测。结果保存为复核 JSON，可在检查后同步或导出 YOLO 标签。
+- **生成初始标注**时，先确认模型与类别映射，再运行图片自动标注。
+- **保留已有工作**时，在“自动运行”中选择“保留旧标注，只补漏标”。应用按交并比判断新框与旧框的重叠程度，默认阈值为 `0.60`。
+- **复核完成**后，把画布上的更改保存到 JSON，再按数据集要求同步或导出 YOLO 标签。
 
-![AutoLabelT 城市街口检测结果，画布标注行人、汽车、自行车和公交车，右侧列出类别和对象](docs/images/demo-street-annotation.png)
-
-<sub>街口自动标注生成 32 个检测框，覆盖行人、汽车、自行车和公交车。照片由 Aanya Chakravarti 拍摄。 <a href="https://unsplash.com/photos/busy-city-street-with-pedestrians-and-cars-kvaaDtr4csU">原图</a> · <a href="https://unsplash.com/license">Unsplash 许可</a></sub>
+![AutoLabelT 城市街口复核结果，画布区分行人与车辆等类别，右侧列出类别和对象](docs/images/demo-street-annotation.png)
 
 ### 训练模型并导出 ONNX
 
-点击右侧边栏底部的“开始训练”，选择数据集，导入或生成 `data.yaml`，再选择 YOLO 或 RT-DETR 检测模型。训练期间可查看损失、Precision、Recall、mAP 和实时日志。训练完成后，在结果页找到 `best.pt`，用“格式转换”导出 ONNX。数据划分和训练选项见 [训练中心指南](docs/training.zh-CN.md)。
+1. 从右侧边栏打开训练中心，选定已复核的数据集。可导入已有的 `data.yaml`，也可在界面里设置训练比例并生成数据划分。
+2. 选择 **YOLO** 或 **RT-DETR**，设置轮次、图像尺寸、批量和设备。运行时可查看训练与验证损失，以及 Precision、Recall、mAP 和日志。
+3. 在“结果与权重”中查看 `best.pt` 和 `last.pt`，通过“格式转换”导出 ONNX。 [训练中心指南](docs/training.zh-CN.md)
 
 ![AutoLabelT 训练中心，显示街景样本完成 8 轮 YOLO 训练后的损失曲线和验证指标](docs/images/demo-training-curves.png)
 
-<sub>使用上方视频生成的 36 张样本进行了 8 轮 YOLO11n 演示训练。截图记录了训练与验证损失，以及 Precision、Recall 和 mAP 的变化。</sub>
-
 ## 数据集输出
+
+视频构建会在所选输出目录生成图片、训练标签和复核记录。类别由 `classes.txt` 的行顺序确定，样本来源和框分数可在元数据中查阅。
 
 ```text
 dataset/
@@ -87,7 +98,7 @@ dataset/
 └── metadata/     # 源视频、帧号、采样统计及逐框分数
 ```
 
-YOLO TXT 每行使用 `class_id center_x center_y width height`，坐标按图像尺寸归一化。复核同步按图片的相对路径写回对应标签，例如 `images/train/frame.jpg` 对应 `labels/train/frame.txt`。只有带复核 JSON 的图片参与写回。
+YOLO TXT 每行使用 `class_id center_x center_y width height`，坐标按图像尺寸归一化。复核同步按图片的相对路径写回标签，例如 `images/train/frame.jpg` 对应 `labels/train/frame.txt`。没有复核 JSON 的图片会保留原有 TXT。
 
 ## 模型支持
 
@@ -123,3 +134,8 @@ python -m pytest -q tests
 AutoLabelT 的标注工作台基于 **X-AnyLabeling 4.2.0**，源码位于 `autolabel/workbench/`，保留上游作者和许可声明。感谢上游项目及其贡献者。 [X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling)
 
 本项目采用 **GPL-3.0** 许可。第三方组件和模型权重适用各自的许可及访问条件。 [许可证](LICENSE) · [第三方声明](THIRD_PARTY_NOTICES.md)
+
+### 演示素材
+
+- **照片**由 Quino Al 和 Aanya Chakravarti 拍摄。 [自行车赛](https://unsplash.com/photos/bike-race-on-street-during-daytime-D3sfNUXLVFc) · [城市街口](https://unsplash.com/photos/busy-city-street-with-pedestrians-and-cars-kvaaDtr4csU) · [Unsplash 许可](https://unsplash.com/license)
+- **视频**由 David McBee 和 Israyosoy S. 拍摄。 [旧金山街景](https://www.pexels.com/video/a-city-street-with-cars-and-pedestrians-crossing-the-street-26732129/) · [墨西哥城街景](https://www.pexels.com/video/a-city-street-with-cars-and-people-walking-20474313/) · [Pexels 许可](https://www.pexels.com/license/)
