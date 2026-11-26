@@ -400,6 +400,7 @@ def test_external_import_runs_supplement_from_batch_dialog(tmp_path, monkeypatch
 
     def choose(dialog):
         assert dialog.annotation_mode.currentData() == "supplement"
+        assert dialog.annotation_mode.currentText() == "漏标补充"
         assert dialog.supplement_iou.value() == 0.6
         assert dialog.from_input.value() == 1 and dialog.to_input.value() == 2
         return QtWidgets.QDialog.DialogCode.Accepted
@@ -413,7 +414,7 @@ def test_external_import_runs_supplement_from_batch_dialog(tmp_path, monkeypatch
             if not view._batch_processing_active:
                 break
         assert not view._batch_processing_active
-        assert messages == ["补标完成 · 新增 2 个，跳过 2 个重复标注"]
+        assert messages == ["漏标补充完成 · 新增 2 个，跳过 2 个重复标注"]
         for path in images.glob("*.json"):
             data = json.loads(path.read_text(encoding="utf-8"))
             assert [shape["label"] for shape in data["shapes"]] == ["hat2", "hat"]

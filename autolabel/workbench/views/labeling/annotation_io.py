@@ -137,7 +137,7 @@ class AnnotationTransaction:
         try:
             for path, version in self.source_versions.items():
                 if self._file_version(path) != version:
-                    raise OSError(f"补标期间原标注文件发生变化，请重新运行：{path}")
+                    raise OSError(f"漏标补充期间原标注文件发生变化，请重新运行：{path}")
             for path, staged in self.staged.items():
                 self._backup(path)
                 os.replace(staged, path)

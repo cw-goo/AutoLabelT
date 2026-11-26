@@ -153,7 +153,7 @@ class BatchRangeDialog(QDialog):
         self.annotation_mode = QtWidgets.QComboBox()
         self.annotation_mode.addItem("按模型设置", "model")
         self.annotation_mode.addItem("清除旧标注后重新推理", "clear")
-        self.annotation_mode.addItem("保留旧标注，只补漏标", "supplement")
+        self.annotation_mode.addItem("漏标补充", "supplement")
         mode_label = QLabel("标注模式")
         mode_label.setBuddy(self.annotation_mode)
         options.addWidget(mode_label, 0, 0)
@@ -369,7 +369,7 @@ def finish_processing(self, progress_dialog):
     if cancelled:
         message = "已取消，旧标注已恢复。"
     elif supplement:
-        message = f"补标完成 · 新增 {added:,} 个，跳过 {skipped:,} 个重复标注"
+        message = f"漏标补充完成 · 新增 {added:,} 个，跳过 {skipped:,} 个重复标注"
     else:
         message = self.tr("Processing completed successfully!")
     popup = Popup(

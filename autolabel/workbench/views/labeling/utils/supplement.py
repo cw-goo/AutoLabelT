@@ -68,7 +68,7 @@ def read_yolo_baseline(image_file, label, root, watch):
     classes = root / "classes.txt"
     if not classes.is_file():
         raise ValueError(f"发现 YOLO 标签 {label.name}。请先通过 YOLO 标注导入加载类别表，"
-                         "或在数据集目录放入 classes.txt 后再补标。")
+                         "或在数据集目录放入 classes.txt 后再运行漏标补充。")
     watch(classes)
     converter = LabelConverter(classes_file=str(classes))
     return converter.read_yolo_annotation(str(label), str(image_file), "hbb")
