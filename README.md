@@ -19,7 +19,9 @@ AutoLabelT 在同一个桌面应用里完成视频抽帧、图像标注、人工
 
 **批量视频 → 筛选样本并生成标注 → 画布复核 → YOLO / RT-DETR 训练 → ONNX 导出**
 
-![AutoLabelT 桌面工作台，中央是标注画布，右侧是视频数据集面板和训练入口](docs/images/workbench.png)
+![AutoLabelT 自动标注自行车赛照片，画布中以不同颜色区分骑手、自行车和汽车](docs/images/demo-cycling-annotation.png)
+
+<sub>自行车赛标注示例。YOLO11n 生成 18 个检测框，可在画布上逐个复核。照片由 Quino Al 拍摄。 <a href="https://unsplash.com/photos/bike-race-on-street-during-daytime-D3sfNUXLVFc">原图</a> · <a href="https://unsplash.com/license">Unsplash 许可</a></sub>
 
 ## 快速开始
 
@@ -54,13 +56,25 @@ autolabelt
 
 指定张数时，软件会在合格样本不足的情况下记录缺口。批量分配、补采与采样参数见 [视频批量处理指南](docs/video-batch.zh-CN.md)。
 
+![AutoLabelT 视频数据集工作台，右侧显示两个视频的采样分配和已保存的 36 张样本，中央画布展示带行人检测框的抽帧样本](docs/images/demo-video-review.png)
+
+<sub>两段街景视频实际生成 36 张样本。右侧显示每段视频的分配张数和初始间隔，画布显示抽出的行人样本。 <a href="https://www.pexels.com/video/a-city-street-with-cars-and-pedestrians-crossing-the-street-26732129/">David McBee 视频</a> · <a href="https://www.pexels.com/video/a-city-street-with-cars-and-people-walking-20474313/">Israyosoy S. 视频</a> · <a href="https://www.pexels.com/license/">Pexels 许可</a></sub>
+
 ### 为已有图片补标
 
 在画布中打开图片目录或已有标注的数据集，例如带有 `images/`、`labels/` 和 `classes.txt` 的 YOLO 数据集。加载图片模型后，在“自动运行”中选择“保留旧标注，只补漏标”。补标会依据交并比（IoU，默认 `0.60`）跳过与现有框高度重叠的预测。结果保存为复核 JSON，可在检查后同步或导出 YOLO 标签。
 
+![AutoLabelT 城市街口检测结果，画布标注行人、汽车、自行车和公交车，右侧列出类别和对象](docs/images/demo-street-annotation.png)
+
+<sub>街口自动标注生成 32 个检测框，覆盖行人、汽车、自行车和公交车。照片由 Aanya Chakravarti 拍摄。 <a href="https://unsplash.com/photos/busy-city-street-with-pedestrians-and-cars-kvaaDtr4csU">原图</a> · <a href="https://unsplash.com/license">Unsplash 许可</a></sub>
+
 ### 训练模型并导出 ONNX
 
 点击右侧边栏底部的“开始训练”，选择数据集，导入或生成 `data.yaml`，再选择 YOLO 或 RT-DETR 检测模型。训练期间可查看损失、Precision、Recall、mAP 和实时日志。训练完成后，在结果页找到 `best.pt`，用“格式转换”导出 ONNX。数据划分和训练选项见 [训练中心指南](docs/training.zh-CN.md)。
+
+![AutoLabelT 训练中心，显示街景样本完成 8 轮 YOLO 训练后的损失曲线和验证指标](docs/images/demo-training-curves.png)
+
+<sub>使用上方视频生成的 36 张样本进行了 8 轮 YOLO11n 演示训练。截图记录了训练与验证损失，以及 Precision、Recall 和 mAP 的变化。</sub>
 
 ## 数据集输出
 
