@@ -15,7 +15,7 @@ import pytest
     ([], None),
 ])
 def test_lowest_confidence_box_selection_ignores_missing_or_invalid_scores(scores, expected):
-    from autolabel.workbench.views.labeling.label_widget import LabelingWidget
+    from autolabelt.workbench.views.labeling.label_widget import LabelingWidget
 
     shapes = [SimpleNamespace(shape_type="rectangle", score=score) for score in scores]
     selections = []
@@ -29,7 +29,7 @@ def test_lowest_confidence_box_selection_ignores_missing_or_invalid_scores(score
 
 
 def test_default_box_selection_respects_visibility_and_ignores_non_boxes():
-    from autolabel.workbench.views.labeling.label_widget import LabelingWidget
+    from autolabelt.workbench.views.labeling.label_widget import LabelingWidget
 
     hidden = SimpleNamespace(shape_type="rectangle", score=0.01)
     point = SimpleNamespace(shape_type="point", score=0.02)
@@ -47,17 +47,17 @@ def test_image_navigation_selects_lowest_score_in_canvas_and_object_list(tmp_pat
     import cv2
     import numpy as np
     from PyQt6 import QtCore, QtWidgets
-    from autolabel.workbench import config as settings
-    from autolabel.workbench.resources import resources
-    from autolabel.workbench.views.labeling.label_file import LabelFile
-    from autolabel.workbench.views.labeling.pointcloud.icons import _svg_renderer
-    from autolabel.desktop import AutoLabelMainWindow
+    from autolabelt.workbench import config as settings
+    from autolabelt.workbench.resources import resources
+    from autolabelt.workbench.views.labeling.label_file import LabelFile
+    from autolabelt.workbench.views.labeling.pointcloud.icons import _svg_renderer
+    from autolabelt.desktop import AutoLabelMainWindow
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     # Earlier Qt tests may have disposed their QApplication and its SVG renderers.
     _svg_renderer.cache_clear()
-    settings.current_config_file = str(tmp_path / ".autolabelrc")
+    settings.current_config_file = str(tmp_path / ".autolabeltrc")
     config = settings.get_config()
     config.update(auto_save=False, keep_prev=False)
     window = AutoLabelMainWindow(app, config=config)

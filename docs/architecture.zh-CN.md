@@ -6,19 +6,19 @@
 
 ## 当前模块
 
-- `autolabel/core.py`：Qt 无关的参数、视频采样、质量筛选、YOLO 写入和逐帧元数据；`databuild.py` 规则由回归测试保护。
-- `autolabel/models/registry.py`：视频推理支持的模型 ID、任务、来源、许可与固定版本。
-- `autolabel/models/downloader.py`：后台下载可取消、权重 SHA256、本地 manifest；YOLO-World 管理专用 CLIP 文本编码器。
-- `autolabel/models/adapters.py`：本地 YOLO、YOLO-World、Grounding DINO、Florence-2 统一归一化 BBox 与提示词类别 ID。
-- `autolabel/models/worker.py`：模型下载、可选依赖安装、加载和测试推理的 Qt 工作线程。
-- `autolabel/workbench/`：标注内核及图片模型面板。
-- `autolabel/desktop.py`、`video_dock.py`：集成入口、视频停靠面板、后台任务和参数对话框。
-- `autolabel/annotation_bridge.py`：调用原项目转换器，进行 YOLO TXT ↔ 原生 JSON 复核衔接。
+- `autolabelt/core.py`：Qt 无关的参数、视频采样、质量筛选、YOLO 写入和逐帧元数据；`databuild.py` 规则由回归测试保护。
+- `autolabelt/models/registry.py`：视频推理支持的模型 ID、任务、来源、许可与固定版本。
+- `autolabelt/models/downloader.py`：后台下载可取消、权重 SHA256、本地 manifest；YOLO-World 管理专用 CLIP 文本编码器。
+- `autolabelt/models/adapters.py`：本地 YOLO、YOLO-World、Grounding DINO、Florence-2 统一归一化 BBox 与提示词类别 ID。
+- `autolabelt/models/worker.py`：模型下载、可选依赖安装、加载和测试推理的 Qt 工作线程。
+- `autolabelt/workbench/`：标注内核及图片模型面板。
+- `autolabelt/desktop.py`、`video_dock.py`：集成入口、视频停靠面板、后台任务和参数对话框。
+- `autolabelt/annotation_bridge.py`：调用原项目转换器，进行 YOLO TXT ↔ 原生 JSON 复核衔接。
 - 旧的独立界面和简化画布已删除；当前统一使用集成工作台。
-- `autolabel/annotations.py`、`validate.py`：YOLO 标签读写和校验。
-- `autolabel/workbench/views/labeling/label_mapping.py`：导入、数据集校验和复核共用的有序类别表读取器；统一处理 BOM、显式编号、空名称与重复类别。
-- `autolabel/workbench/views/labeling/annotation_io.py`：同目录临时文件、原子保存、文件访问预检和可回滚的批量替换。
-- `autolabel/model_square.py`：复用图片自动标注目录的厂商/模型选择对话框；保留原生目录，明确标出视频兼容性，补充视频后端专用型号。模型选择本身不触发下载。
+- `autolabelt/annotations.py`、`validate.py`：YOLO 标签读写和校验。
+- `autolabelt/workbench/views/labeling/label_mapping.py`：导入、数据集校验和复核共用的有序类别表读取器；统一处理 BOM、显式编号、空名称与重复类别。
+- `autolabelt/workbench/views/labeling/annotation_io.py`：同目录临时文件、原子保存、文件访问预检和可回滚的批量替换。
+- `autolabelt/model_square.py`：复用图片自动标注目录的厂商/模型选择对话框；保留原生目录，明确标出视频兼容性，补充视频后端专用型号。模型选择本身不触发下载。
 
 ## 安全和数据约束
 

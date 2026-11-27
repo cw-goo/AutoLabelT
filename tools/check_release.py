@@ -52,9 +52,9 @@ def main():
                            else [node.module] if isinstance(node, ast.ImportFrom) and not node.level
                            and node.module else [])
                 for name in imports:
-                    if name == "anylabeling" or name.startswith("anylabeling."):
+                    if name.partition(".")[0] in {"anylabeling", "autolabel"}:
                         errors.append(f"Obsolete import: {relative}:{node.lineno}")
-                    if name.startswith("autolabel."):
+                    if name.startswith("autolabelt."):
                         module = ROOT.joinpath(*name.split("."))
                         if not module.is_dir() and not module.with_suffix(".py").is_file():
                             errors.append(f"Unresolved local import: {relative}:{node.lineno}: {name}")
@@ -62,11 +62,11 @@ def main():
             for number, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
                 if secret.search(line):
                     errors.append(f"Possible credential: {relative}:{number} (value hidden)")
-    required = ["LICENSE", "THIRD_PARTY_NOTICES.md", "autolabel/assets/logo.svg", "autolabel/assets/logo.png",
-                "autolabel/workbench/configs/autolabel_config.yaml",
-                "autolabel/workbench/resources/resources.rcc", "docs/images/workbench.png"]
+    required = ["LICENSE", "THIRD_PARTY_NOTICES.md", "autolabelt/assets/logo.svg", "autolabelt/assets/logo.png",
+                "autolabelt/workbench/configs/autolabelt_config.yaml",
+                "autolabelt/workbench/resources/resources.rcc", "docs/images/workbench.png"]
     errors.extend(f"Missing required file: {name}" for name in required if not (ROOT / name).is_file())
-    qrc = ROOT / "autolabel/workbench/resources/resources.qrc"
+    qrc = ROOT / "autolabelt/workbench/resources/resources.qrc"
     for element in ET.parse(qrc).findall(".//file"):
         if not (qrc.parent / element.text).is_file():
             errors.append(f"Missing Qt source asset: {element.text}")

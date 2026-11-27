@@ -7,15 +7,15 @@ Qt, and other dependencies. Package availability depends on CPU
 architecture and Linux distribution. No root privileges are needed.
 
 1. Extract the complete archive:
-   tar -xzf AutoLabel-0.1.0-Linux.tar.gz
-2. Enter the extracted AutoLabel-* directory.
+   tar -xzf AutoLabelT-0.1.0-Linux.tar.gz
+2. Enter the extracted AutoLabelT-* directory.
 3. Run: bash install.sh
 4. Start with autolabelt. If ~/.local/bin is outside your PATH, run
    ~/.local/bin/autolabelt directly.
 
 To choose a Python executable or install directory, set environment
 variables before running the script, for example:
-  PYTHON=/path/to/python3.11 AUTOLABEL_INSTALL_DIR="$HOME/Apps/AutoLabel" bash install.sh
+  PYTHON=/path/to/python3.11 AUTOLABELT_INSTALL_DIR="$HOME/Apps/AutoLabelT" bash install.sh
 
 The installer uses a private virtual environment and downloads Linux
 dependencies on the target computer. For NVIDIA CUDA or AMD ROCm, install
@@ -27,5 +27,5 @@ a compatible local YOLO .pt model selected in the video panel; weights and
 datasets are not included. A graphical session is required for the UI.
 
 To uninstall, remove the installation directory and ~/.local/bin/autolabelt.
-Annotation datasets and ~/.autolabelrc are stored separately. The bundled X-AnyLabeling code is
+Annotation datasets and ~/.autolabeltrc are stored separately. The bundled X-AnyLabeling code is
 licensed under GPL-3.0; see LICENSE and THIRD_PARTY_NOTICES.md.

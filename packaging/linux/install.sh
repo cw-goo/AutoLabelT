@@ -3,11 +3,11 @@ set -euo pipefail
 
 bundle_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 python="${PYTHON:-python3.11}"
-install_dir="${AUTOLABEL_INSTALL_DIR:-$HOME/.local/share/autolabel}"
+install_dir="${AUTOLABELT_INSTALL_DIR:-${AUTOLABEL_INSTALL_DIR:-$HOME/.local/share/autolabelt}}"
 
 "$python" -c 'import sys; assert sys.version_info[:2] == (3, 11), "Python 3.11 is required"'
 shopt -s nullglob
-wheels=("$bundle_dir"/autolabel-*.whl)
+wheels=("$bundle_dir"/autolabelt-*.whl)
 if (( ${#wheels[@]} != 1 )); then
     echo "Expected one AutoLabelT wheel next to install.sh" >&2
     exit 1
@@ -22,7 +22,7 @@ venv_python="$install_dir/bin/python"
 if [[ ! -x "$install_dir/bin/autolabelt" || -x "$install_dir/bin/autolabel" ]]; then
     "$venv_python" -m pip install --force-reinstall --no-deps "${wheels[0]}"
 fi
-"$venv_python" -c "import autolabel.workbench, PyQt6, cv2, torch, ultralytics, onnx, onnxruntime; from importlib.resources import files; assert files('autolabel').joinpath('assets/logo.png').is_file(); assert files('autolabel.workbench').joinpath('configs/autolabel_config.yaml').is_file(); from autolabel.workbench.resources import resources"
+"$venv_python" -c "import autolabelt.workbench, PyQt6, cv2, torch, ultralytics, onnx, onnxruntime; from importlib.resources import files; assert files('autolabelt').joinpath('assets/logo.png').is_file(); assert files('autolabelt.workbench').joinpath('configs/autolabelt_config.yaml').is_file(); from autolabelt.workbench.resources import resources"
 
 command_dir="$HOME/.local/bin"
 mkdir -p -- "$command_dir"

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from autolabel.workbench.views.labeling.label_converter import LabelConverter
+from autolabelt.workbench.views.labeling.label_converter import LabelConverter
 
 
 def annotation(tmp_path, shape_type="rectangle", label="person"):
@@ -102,7 +102,7 @@ def test_numbered_classes_import_export_roundtrip(tmp_path):
 
 def test_yolo_export_dialog_with_numbered_classes(tmp_path, monkeypatch):
     from PyQt6 import QtWidgets
-    from autolabel.workbench.views.labeling.utils import export
+    from autolabelt.workbench.views.labeling.utils import export
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -200,7 +200,7 @@ def test_invalid_classes_file_does_not_shift_class_ids(tmp_path, content):
 
 
 def test_export_reads_annotation_saved_to_custom_path(tmp_path):
-    from autolabel.workbench.views.labeling.utils.export import _get_yolo_label_file
+    from autolabelt.workbench.views.labeling.utils.export import _get_yolo_label_file
 
     classes = tmp_path / "classes.txt"
     classes.write_text("person\n", encoding="utf-8")

@@ -3,7 +3,7 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "autolabel"
+name = "autolabelt"
 version = "0.1.0"
 description = "AutoLabelT desktop workbench for annotation and visual model training"
 readme = "README.md"
@@ -56,15 +56,15 @@ yolo-world = [
 ]
 
 [project.scripts]
-autolabelt = "autolabel.desktop:main"
+autolabelt = "autolabelt.desktop:main"
 
 [tool.setuptools.packages.find]
-include = ["autolabel*"]
+include = ["autolabelt*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.txt", "*.json", "*.yaml", "*.yml", "*.gz", "*.h", "*.cuh", "*.cpp", "*.cu"]
-autolabel = ["assets/*.svg", "assets/*.png"]
-"autolabel.workbench" = ["configs/*.yaml", "configs/auto_labeling/*.yaml", "resources/*.rcc", "resources/images/*", "resources/translations/*", "**/*.ui", "services/auto_labeling/osam/clip/*.gz"]
+autolabelt = ["assets/*.svg", "assets/*.png"]
+"autolabelt.workbench" = ["configs/*.yaml", "configs/auto_labeling/*.yaml", "resources/*.rcc", "resources/images/*", "resources/translations/*", "**/*.ui", "services/auto_labeling/osam/clip/*.gz"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

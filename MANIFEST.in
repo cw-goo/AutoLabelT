@@ -1,10 +1,10 @@
-recursive-include autolabel/workbench/configs *
-recursive-include autolabel/workbench/resources *
-recursive-include autolabel/assets *.svg *.png
-recursive-include autolabel *.ui
-include autolabel/workbench/services/auto_labeling/osam/clip/bpe_simple_vocab_16e6.txt.gz
-recursive-include autolabel/workbench/services/auto_labeling/configs *.txt *.json
-recursive-include autolabel/workbench/services/auto_labeling/visualgd *.h *.cuh *.cpp *.cu
+recursive-include autolabelt/workbench/configs *
+recursive-include autolabelt/workbench/resources *
+recursive-include autolabelt/assets *.svg *.png
+recursive-include autolabelt *.ui
+include autolabelt/workbench/services/auto_labeling/osam/clip/bpe_simple_vocab_16e6.txt.gz
+recursive-include autolabelt/workbench/services/auto_labeling/configs *.txt *.json
+recursive-include autolabelt/workbench/services/auto_labeling/visualgd *.h *.cuh *.cpp *.cu
 include LICENSE
 include THIRD_PARTY_NOTICES.md
 global-exclude __pycache__ *.py[cod]

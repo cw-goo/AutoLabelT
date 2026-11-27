@@ -16,9 +16,9 @@ def main():
     with (root / "pyproject.toml").open("rb") as stream:
         version = tomllib.load(stream)["project"]["version"]
     output = root / "artifacts" / "release"
-    stage = output / f"AutoLabel-{version}-Linux"
+    stage = output / f"AutoLabelT-{version}-Linux"
     stage.mkdir(parents=True, exist_ok=True)
-    for old_wheel in stage.glob("autolabel-*.whl"):
+    for old_wheel in stage.glob("autolabelt-*.whl"):
         old_wheel.unlink()
 
     subprocess.run(
@@ -26,7 +26,7 @@ def main():
         check=True,
         cwd=root,
     )
-    wheels = list(stage.glob("autolabel-*.whl"))
+    wheels = list(stage.glob("autolabelt-*.whl"))
     if len(wheels) != 1:
         raise RuntimeError("Expected exactly one AutoLabel wheel")
 
@@ -35,7 +35,7 @@ def main():
     shutil.copy2(root / "LICENSE", stage)
     shutil.copy2(root / "THIRD_PARTY_NOTICES.md", stage)
 
-    archive = output / f"AutoLabel-{version}-Linux.tar.gz"
+    archive = output / f"AutoLabelT-{version}-Linux.tar.gz"
     with tarfile.open(archive, "w:gz") as bundle:
         for path in stage.iterdir():
             info = bundle.gettarinfo(str(path), arcname=f"{stage.name}/{path.name}")

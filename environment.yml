@@ -1,4 +1,4 @@
-name: autolabel
+name: autolabelt
 channels:
   - defaults
 dependencies:

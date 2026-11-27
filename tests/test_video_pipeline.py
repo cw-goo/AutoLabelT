@@ -7,9 +7,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from autolabel.core import (ProjectConfig, classify_boxes, format_yolo,
+from autolabelt.core import (ProjectConfig, classify_boxes, format_yolo,
                             is_frame_qualified, next_jump, run_pipeline)
-from autolabel.validate import validate_dataset
+from autolabelt.validate import validate_dataset
 
 
 def baseline_filter():
@@ -172,7 +172,7 @@ def test_rejected_run_preserves_previous_config(tmp_path, conflict):
 @pytest.mark.parametrize("model_id,expected", [("local_yolo", [0.9, 0.3]),
                                                ("florence2", [None, None])])
 def test_video_scores_survive_review_and_recovery(tmp_path, model_id, expected):
-    from autolabel.annotation_bridge import prepare_review_dataset
+    from autolabelt.annotation_bridge import prepare_review_dataset
 
     class ScoredDetector:
         def predict(self, frame):

@@ -3,13 +3,13 @@
 import numpy as np
 import pytest
 
-from autolabel.core import ProjectConfig, classify_boxes, format_yolo
-from autolabel.models.adapters import _to_yolo, parse_prompts
-from autolabel.models.downloader import download_model
+from autolabelt.core import ProjectConfig, classify_boxes, format_yolo
+from autolabelt.models.adapters import _to_yolo, parse_prompts
+from autolabelt.models.downloader import download_model
 
 
 def test_temporary_model_cleanup_only_removes_current_session(tmp_path, monkeypatch):
-    from autolabel.models.downloader import model_path, release_session_model
+    from autolabelt.models.downloader import model_path, release_session_model
 
     temporary = tmp_path / "session"
     monkeypatch.setenv("AUTOLABEL_MODEL_DIR", str(temporary))
@@ -33,10 +33,10 @@ def test_desktop_entry_cleans_temporary_models_on_exit(monkeypatch):
     import os
     from pathlib import Path
     import sys
-    import autolabel.workbench.app
-    from autolabel.desktop import main
+    import autolabelt.workbench.app
+    from autolabelt.desktop import main
 
-    monkeypatch.setattr(sys, "argv", ["autolabel"])
+    monkeypatch.setattr(sys, "argv", ["autolabelt"])
     created = []
 
     def stop_application():
@@ -46,7 +46,7 @@ def test_desktop_entry_cleans_temporary_models_on_exit(monkeypatch):
         created.append(location)
         raise SystemExit(0)
 
-    monkeypatch.setattr(autolabel.workbench.app, "main", stop_application)
+    monkeypatch.setattr(autolabelt.workbench.app, "main", stop_application)
     with pytest.raises(SystemExit) as result:
         main()
     assert result.value.code == 0
@@ -80,14 +80,14 @@ def test_prompt_mapping_does_not_guess_ambiguous_or_empty_names():
 
 
 def test_florence_requires_explicit_code_trust(tmp_path):
-    from autolabel.models.adapters import Florence2Detector
+    from autolabelt.models.adapters import Florence2Detector
 
     with pytest.raises(ValueError, match="信任模型代码"):
         Florence2Detector(tmp_path, ["person"], trust_remote_code=False)
 
 
 def test_model_download_failure_keeps_no_ready_manifest(tmp_path, monkeypatch):
-    import autolabel.models.downloader as downloader
+    import autolabelt.models.downloader as downloader
 
     monkeypatch.setenv("AUTOLABEL_MODEL_DIR", str(tmp_path))
     def fail(*_args, **_kwargs):
@@ -100,8 +100,8 @@ def test_model_download_failure_keeps_no_ready_manifest(tmp_path, monkeypatch):
 
 def test_model_manifest_belongs_to_the_tested_model(tmp_path, monkeypatch):
     import json
-    from autolabel.models.downloader import mark_model_ready, model_download_state, model_path
-    from autolabel.models.registry import get_model
+    from autolabelt.models.downloader import mark_model_ready, model_download_state, model_path
+    from autolabelt.models.registry import get_model
 
     monkeypatch.setenv("AUTOLABEL_MODEL_DIR", str(tmp_path))
     spec = get_model("grounding_dino")
@@ -125,8 +125,8 @@ def test_model_manifest_belongs_to_the_tested_model(tmp_path, monkeypatch):
 def test_pretrained_yolo_catalog_and_managed_download(tmp_path, monkeypatch):
     import io
     import json
-    import autolabel.models.downloader as downloader
-    from autolabel.models.registry import get_model
+    import autolabelt.models.downloader as downloader
+    from autolabelt.models.registry import get_model
 
     for family, release in (("yolov8", "v8.2.0"), ("yolo11", "v8.3.0"),
                             ("yolo26", "v8.4.0")):
@@ -156,7 +156,7 @@ def test_pretrained_yolo_catalog_and_managed_download(tmp_path, monkeypatch):
 def test_pretrained_yolo_maps_existing_classes_and_rejects_unknown(monkeypatch):
     import sys
     from types import SimpleNamespace
-    from autolabel.models.adapters import CocoYOLODetector
+    from autolabelt.models.adapters import CocoYOLODetector
 
     class FakeYOLO:
         names = {0: "person", 1: "bicycle", 67: "cell phone"}
@@ -186,8 +186,8 @@ def test_pretrained_yolo_maps_existing_classes_and_rejects_unknown(monkeypatch):
 def test_sam3_uses_text_prompts_and_reports_gated_download(tmp_path, monkeypatch):
     import sys
     from types import SimpleNamespace
-    import autolabel.models.downloader as downloader
-    from autolabel.models.adapters import SAM3Detector
+    import autolabelt.models.downloader as downloader
+    from autolabelt.models.adapters import SAM3Detector
 
     class FakeSAM3:
         def __init__(self, overrides):

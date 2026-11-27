@@ -8,7 +8,7 @@ import pytest
 @pytest.fixture
 def application(monkeypatch):
     from PyQt6 import QtWidgets
-    from autolabel.workbench.resources import resources
+    from autolabelt.workbench.resources import resources
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -18,7 +18,7 @@ def application(monkeypatch):
 
 def test_square_only_offers_grounding_dino_and_sam(application):
     from PyQt6 import QtCore
-    from autolabel.model_square import ModelSquareDialog, SQUARE_MODEL_IDS
+    from autolabelt.model_square import ModelSquareDialog, SQUARE_MODEL_IDS
 
     native = SimpleNamespace(init_model_data=lambda: pytest.fail("unrelated native models were queried"))
     dialog = ModelSquareDialog(native)
@@ -43,7 +43,7 @@ def test_square_only_offers_grounding_dino_and_sam(application):
 
 def test_square_cancel_preserves_video_model(application, monkeypatch):
     from PyQt6 import QtWidgets
-    from autolabel.video_dock import VideoDatasetDock
+    from autolabelt.video_dock import VideoDatasetDock
 
     dock = VideoDatasetDock(QtWidgets.QMainWindow())
     dock.model_combo.setCurrentIndex(dock.model_combo.findData("yolo11_s"))
@@ -57,7 +57,7 @@ def test_square_cancel_preserves_video_model(application, monkeypatch):
 
 def test_model_task_locks_both_selection_entries(application, monkeypatch):
     from PyQt6 import QtWidgets
-    from autolabel.video_dock import VideoDatasetDock
+    from autolabelt.video_dock import VideoDatasetDock
 
     dock = VideoDatasetDock(QtWidgets.QMainWindow())
     dock._set_model_selection_enabled(False)
@@ -76,7 +76,7 @@ def test_model_task_locks_both_selection_entries(application, monkeypatch):
 
 def test_local_weight_cancel_invalid_and_success(application, tmp_path, monkeypatch):
     from PyQt6 import QtWidgets
-    from autolabel.video_dock import VideoDatasetDock
+    from autolabelt.video_dock import VideoDatasetDock
 
     dock = VideoDatasetDock(QtWidgets.QMainWindow())
     dock.model_combo.setCurrentIndex(dock.model_combo.findData("yolo11_s"))
@@ -102,7 +102,7 @@ def test_local_weight_cancel_invalid_and_success(application, tmp_path, monkeypa
 
 def test_model_details_follow_selection_and_filter_clears_hidden_model(application):
     from PyQt6 import QtCore
-    from autolabel.model_square import ModelSquareDialog
+    from autolabelt.model_square import ModelSquareDialog
 
     dialog = ModelSquareDialog()
     items = {}

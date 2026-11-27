@@ -1,15 +1,15 @@
 # AutoLabelT 品牌标识
 
-AutoLabelT 中的 T 代表 Training。主工具栏用原图标的暖橙色标出“标注 / 训练”，继续使用原图标和现有布局。安装注册的终端命令为 `autolabelt`，源码包和 Qt 设置沿用原有标识。
+AutoLabelT 中的 T 代表 Training。主工具栏用原图标的暖橙色标出“标注 / 训练”，继续使用原图标和现有布局。安装注册的终端命令为 `autolabelt`，Python 包和 Conda 环境均使用 `autolabelt`，Qt 设置沿用旧版标识以读取已有偏好。
 
 Logo 使用用户桌面原图去除背景后的高保真 SVG 转换版：橙色冠羽、蓝色鸟身、铜色枝干和两片绿叶构成艺术字母 **A**。保留原图造型、配色及 1254 × 1254 画布和留白，不重新设计。背景透明，白色鸟头保留。
 
 ## 资源与引用
 
-- [SVG 矢量主图](../autolabel/assets/logo.svg)：从桌面移入的原图转换版，保留其路径和颜色渐变，无嵌入位图。
-- [PNG 导出版](../autolabel/assets/logo.png)：从 SVG 渲染的 1024 × 1024 透明图片，供软件工具栏、窗口、设置页及 README 预览使用；README 中点击 Logo 可查看 SVG。
-- `autolabel/workbench/resources/resources.qrc`：通过 `images/icon.svg`、`images/logo.svg` 与原有 PNG 兼容别名引用资源。
-- `autolabel/workbench/resources/images/icon.ico`、`icon.icns`：从主图导出的平台图标。
+- [SVG 矢量主图](../autolabelt/assets/logo.svg)：从桌面移入的原图转换版，保留其路径和颜色渐变，无嵌入位图。
+- [PNG 导出版](../autolabelt/assets/logo.png)：从 SVG 渲染的 1024 × 1024 透明图片，供软件工具栏、窗口、设置页及 README 预览使用；README 中点击 Logo 可查看 SVG。
+- `autolabelt/workbench/resources/resources.qrc`：通过 `images/icon.svg`、`images/logo.svg` 与原有 PNG 兼容别名引用资源。
+- `autolabelt/workbench/resources/images/icon.ico`、`icon.icns`：从主图导出的平台图标。
 
 更新 SVG 主图后，执行 `python tools/export_brand_icons.py` 一并导出 PNG 和平台图标，再执行 `python tools/build_resources.py --rcc /path/to/rcc --lrelease /path/to/lrelease`，并将生成的 `resources.rcc` 一并提交。SVG 与 PNG 均须包含在 `pyproject.toml` 和 `MANIFEST.in` 的资源规则中。可用 `--size 2048` 导出更大的 PNG。
 

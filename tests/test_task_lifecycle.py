@@ -13,7 +13,7 @@ import pytest
 @pytest.fixture
 def application(monkeypatch):
     from PyQt6 import QtWidgets
-    from autolabel.workbench.resources import resources
+    from autolabelt.workbench.resources import resources
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -23,7 +23,7 @@ def application(monkeypatch):
                                          "sync_worker", "prepare_worker"])
 def test_running_task_blocks_conflicting_actions(application, monkeypatch, worker_name):
     from PyQt6 import QtWidgets
-    from autolabel.video_dock import VideoDatasetDock
+    from autolabelt.video_dock import VideoDatasetDock
 
     window = QtWidgets.QMainWindow()
     dock = VideoDatasetDock(window)
@@ -51,7 +51,7 @@ def test_running_task_blocks_conflicting_actions(application, monkeypatch, worke
 
 
 def test_cancelled_model_test_cannot_be_marked_ready(monkeypatch):
-    from autolabel.models import worker as module
+    from autolabelt.models import worker as module
 
     worker = module.ModelWorker("test", "local_yolo", path="fake.pt")
     monkeypatch.setattr(module, "create_detector", lambda *a: SimpleNamespace(
@@ -68,7 +68,7 @@ def test_cancelled_model_test_cannot_be_marked_ready(monkeypatch):
 @pytest.mark.parametrize("return_code, expected", [(0, "training_completed"), (1, "training_error")])
 def test_training_reports_terminal_event_after_reaping_worker(tmp_path, monkeypatch, return_code, expected):
     from io import StringIO
-    from autolabel.workbench.services.auto_training.ultralytics import trainer
+    from autolabelt.workbench.services.auto_training.ultralytics import trainer
 
     payload = tmp_path / "payload.json"
     payload.write_text("{}", encoding="utf-8")
@@ -94,7 +94,7 @@ def test_training_reports_terminal_event_after_reaping_worker(tmp_path, monkeypa
 
 
 def test_silent_installer_can_be_cancelled_without_stdout(monkeypatch, tmp_path):
-    from autolabel.models import worker as module
+    from autolabelt.models import worker as module
 
     worker = module.ModelWorker("install_runtime", "yolo26_n")
     original_popen = subprocess.Popen
@@ -145,9 +145,9 @@ def test_silent_installer_can_be_cancelled_without_stdout(monkeypatch, tmp_path)
 
 def test_close_keeps_event_loop_alive_until_worker_finishes(application, monkeypatch):
     from PyQt6 import QtGui
-    from autolabel.workbench import config as settings
-    from autolabel.workbench.views.mainwindow import MainWindow
-    from autolabel.desktop import AutoLabelMainWindow
+    from autolabelt.workbench import config as settings
+    from autolabelt.workbench.views.mainwindow import MainWindow
+    from autolabelt.desktop import AutoLabelMainWindow
 
     window = AutoLabelMainWindow(application, config=settings.get_default_config())
     running, cancelled = [True], []

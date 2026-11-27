@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="autolabel/assets/logo.png" alt="AutoLabelT 标志" width="160" height="160" />
+  <img src="autolabelt/assets/logo.png" alt="AutoLabelT 标志" width="160" height="160" />
   <h1>AutoLabelT</h1>
   <p><strong>视频建集、图像标注与目标检测训练工作台</strong></p>
   <p>
@@ -43,7 +43,7 @@
 git clone https://github.com/cw-goo/AutoLabelT.git
 cd AutoLabelT
 conda env create --file environment.yml
-conda activate autolabel
+conda activate autolabelt
 autolabelt
 ```
 
@@ -53,7 +53,8 @@ autolabelt
 <summary>更新环境、GPU 和安装包</summary>
 
 - **已有环境**可在仓库根目录运行 `conda env update --file environment.yml`。Windows x64 或 Linux x86-64 的旧环境若安装过 CPU 版 ONNX Runtime，更新前先移除旧运行时。CPU 和 GPU 发行包共用 `onnxruntime` 模块。
-- **源码目录移动或更名后**，激活 `autolabel` 环境，在新的仓库根目录运行 `python -m pip install -e .`，让启动命令指向新位置。也可以在已安装的环境中用 `python -m autolabel` 启动。
+- **从旧版升级**建议按上面的命令创建 `autolabelt` 环境。继续使用旧环境时，先运行 `python -m pip uninstall autolabel`，再安装新版。首次启动会从 `~/.autolabelrc` 复制已有设置。
+- **源码目录移动或更名后**，激活 `autolabelt` 环境，在新的仓库根目录运行 `python -m pip install -e .`，让启动命令指向新位置。也可以在已安装的环境中用 `python -m autolabelt` 启动。
 - **GPU 加速**需要兼容的驱动和运行库。Conda 配置在 Windows x64 和 Linux x86-64 上安装 CUDA 版 PyTorch。支持 CPU 的模型也可在 CPU 上运行，训练设备可在训练中心选择。
 - **安装包**由 Python wheel 和安装脚本组成，首次安装需要联网。详见 [Windows 安装说明](packaging/windows/INSTALL.txt) 和 [Linux 安装说明](packaging/linux/INSTALL.txt)。
 
@@ -107,6 +108,6 @@ YOLO TXT 每行使用 `class_id center_x center_y width height`，坐标按图�
 
 ## 致谢与许可
 
-AutoLabelT 的标注工作台基于 **X-AnyLabeling 4.2.0**，源码位于 `autolabel/workbench/`，保留上游作者和许可声明。感谢上游项目及其贡献者。 [X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling)
+AutoLabelT 的标注工作台基于 **X-AnyLabeling 4.2.0**，源码位于 `autolabelt/workbench/`，保留上游作者和许可声明。感谢上游项目及其贡献者。 [X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling)
 
 本项目采用 **GPL-3.0** 许可。第三方组件和模型权重适用各自的许可及访问条件。 [许可证](LICENSE) · [第三方声明](THIRD_PARTY_NOTICES.md)

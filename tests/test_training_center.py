@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from PIL import Image
 
-from autolabel.training_data import prepare_training_dataset
+from autolabelt.training_data import prepare_training_dataset
 
 
 def dataset(root, filenames):
@@ -91,7 +91,7 @@ def test_generated_yaml_reuses_existing_split_directories(tmp_path, names_in_yam
 def test_generate_yaml_and_split_in_selected_output_without_starting_training(tmp_path, monkeypatch):
     import yaml
     from PyQt6 import QtWidgets, QtTest
-    from autolabel.training_window import TrainingWindow
+    from autolabelt.training_window import TrainingWindow
     source = dataset(tmp_path / "source", ["one", "two", "three", "four"])
     window = TrainingWindow()
     window.source.setText(str(source))
@@ -145,7 +145,7 @@ def test_generate_yaml_and_split_in_selected_output_without_starting_training(tm
 def test_training_uses_yaml_field_instead_of_dataset_directory(tmp_path, monkeypatch):
     import yaml
     from PyQt6 import QtWidgets, QtTest
-    from autolabel.training_window import TrainingWindow
+    from autolabelt.training_window import TrainingWindow
     original = dataset(tmp_path / "original", ["one", "two"])
     imported = dataset(tmp_path / "imported", ["one", "two"])
     (imported / "classes.txt").write_text("vest\n")
@@ -252,7 +252,7 @@ def test_training_history_labels_records_and_converts_selected_checkpoint(tmp_pa
     import sys
 
     from PyQt6 import QtWidgets
-    from autolabel.training_window import TrainingWindow
+    from autolabelt.training_window import TrainingWindow
 
     task = tmp_path / "20261124_122928_24e6eb"
     checkpoint = task / "train/weights/best.pt"
@@ -300,7 +300,7 @@ def test_training_history_labels_records_and_converts_selected_checkpoint(tmp_pa
 
 def test_format_conversion_imports_local_pt_without_training_history(tmp_path, monkeypatch):
     from PyQt6 import QtWidgets
-    from autolabel.training_window import TrainingWindow
+    from autolabelt.training_window import TrainingWindow
 
     source = tmp_path / "local.pt"
     source.write_bytes(b"test checkpoint")
@@ -353,7 +353,7 @@ def test_format_conversion_imports_local_pt_without_training_history(tmp_path, m
 
 def test_training_worker_passes_grouped_parameters_to_yolo(monkeypatch):
     import ultralytics
-    from autolabel.workbench.services.auto_training.ultralytics import worker
+    from autolabelt.workbench.services.auto_training.ultralytics import worker
 
     arguments = {}
     model = SimpleNamespace(
@@ -374,7 +374,7 @@ def test_training_worker_passes_grouped_parameters_to_yolo(monkeypatch):
 
 def test_advanced_settings_dialog_handles_manual_input_and_cancel():
     from PyQt6 import QtCore, QtWidgets
-    from autolabel.training_window import TrainingWindow
+    from autolabelt.training_window import TrainingWindow
 
     window = TrainingWindow()
     dialog = window.advanced_dialog
@@ -468,7 +468,7 @@ def test_training_can_still_read_existing_txt_split_lists(tmp_path):
 
 
 def test_training_callbacks_report_epoch_and_metrics():
-    from autolabel.workbench.services.auto_training.ultralytics.worker import attach_training_events
+    from autolabelt.workbench.services.auto_training.ultralytics.worker import attach_training_events
     callbacks, events = {}, []
     model = SimpleNamespace(add_callback=lambda name, callback: callbacks.update({name: callback}))
     attach_training_events(model, lambda event, **data: events.append((event, data)))
@@ -486,7 +486,7 @@ def test_training_callbacks_report_epoch_and_metrics():
 def test_metric_chart_animates_updates_and_legend_filters_hover_values():
     from PyQt6 import QtCore, QtGui, QtWidgets
 
-    from autolabel.training_chart import MetricChart
+    from autolabelt.training_chart import MetricChart
 
     chart = MetricChart("验证指标")
     chart.resize(440, 260)
@@ -519,8 +519,8 @@ def test_metric_chart_animates_updates_and_legend_filters_hover_values():
 
 
 def test_window_live_progress_and_close_hides(tmp_path, monkeypatch):
-    from autolabel.training_window import TrainingWindow
-    from autolabel.workbench.services.auto_training.ultralytics import worker
+    from autolabelt.training_window import TrainingWindow
+    from autolabelt.workbench.services.auto_training.ultralytics import worker
     window = TrainingWindow()
     window.record = {"args": {"model": "rtdetr-l.pt"}}
     window.on_event("training_progress", {"epoch": 3, "total_epochs": 10})
@@ -556,9 +556,9 @@ def test_window_live_progress_and_close_hides(tmp_path, monkeypatch):
 
 def test_integrated_training_entry_reuses_window(tmp_path):
     from PyQt6 import QtCore, QtWidgets
-    from autolabel.workbench import config
-    from autolabel.workbench.resources import resources
-    from autolabel.desktop import AutoLabelMainWindow
+    from autolabelt.workbench import config
+    from autolabelt.workbench.resources import resources
+    from autolabelt.desktop import AutoLabelMainWindow
     previous_output = tmp_path / "training-runs"
     QtCore.QSettings().setValue("training/output", str(previous_output))
     window = AutoLabelMainWindow(QtWidgets.QApplication.instance(), config=config.get_config())

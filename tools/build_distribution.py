@@ -10,7 +10,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 BUILD_FILES = ("pyproject.toml", "MANIFEST.in", "README.md", "LICENSE",
                "THIRD_PARTY_NOTICES.md", "AGENTS.md", "databuild.py", "environment.yml")
-BUILD_DIRECTORIES = ("autolabel", "tests", "tools", "docs", "packaging", ".github")
+BUILD_DIRECTORIES = ("autolabelt", "tests", "tools", "docs", "packaging", ".github")
 
 
 def copy_build_inputs(root, destination):

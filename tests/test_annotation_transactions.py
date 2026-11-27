@@ -8,13 +8,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from autolabel.workbench.views.labeling.annotation_io import (
+from autolabelt.workbench.views.labeling.annotation_io import (
     AnnotationTransaction, atomic_write_json, describe_file_error,
 )
 
 
 def test_atomic_save_preserves_original_on_serialization_or_replace_failure(tmp_path, monkeypatch):
-    from autolabel.workbench.views.labeling import annotation_io
+    from autolabelt.workbench.views.labeling import annotation_io
 
     target = tmp_path / "frame.json"
     target.write_text("original")
@@ -66,7 +66,7 @@ def test_cancel_fresh_inference_restores_all_originals_and_removes_staged_output
 
 
 def test_failed_second_commit_restores_originals_and_removes_new_files(tmp_path, monkeypatch):
-    from autolabel.workbench.views.labeling import annotation_io
+    from autolabelt.workbench.views.labeling import annotation_io
 
     first, second, new = [tmp_path / name for name in ("one.json", "two.json", "new.json")]
     first.write_text("first")
@@ -104,7 +104,7 @@ def test_successful_fresh_inference_commits_and_removes_sidecar_backup(tmp_path)
 
 
 def test_rollback_failure_preserves_recoverable_backup(tmp_path, monkeypatch):
-    from autolabel.workbench.views.labeling import annotation_io
+    from autolabelt.workbench.views.labeling import annotation_io
 
     target = tmp_path / "frame.json"
     target.write_text("original")
@@ -135,7 +135,7 @@ def test_file_errors_include_path_and_actionable_reason(failure, expected):
 
 @pytest.mark.parametrize("result", ["raises", None])
 def test_model_manager_does_not_convert_prediction_failure_to_empty_annotations(result):
-    from autolabel.workbench.services.auto_labeling.model_manager import ModelManager
+    from autolabelt.workbench.services.auto_labeling.model_manager import ModelManager
 
     def predict(*_):
         if result == "raises":
@@ -156,7 +156,7 @@ def test_model_manager_does_not_convert_prediction_failure_to_empty_annotations(
 def import_dataset(tmp_path):
     import cv2
     import numpy as np
-    from autolabel.workbench.views.labeling.label_converter import LabelConverter
+    from autolabelt.workbench.views.labeling.label_converter import LabelConverter
 
     images, labels = tmp_path / "images", tmp_path / "labels"
     images.mkdir()
@@ -172,7 +172,7 @@ def import_dataset(tmp_path):
 
 @pytest.mark.parametrize("failure", ["class", "permission", "cancel"])
 def test_yolo_import_failure_or_cancel_never_leaves_mixed_results(tmp_path, monkeypatch, failure):
-    from autolabel.workbench.views.labeling.utils.upload import (
+    from autolabelt.workbench.views.labeling.utils.upload import (
         _import_yolo_annotations, AnnotationImportCancelled,
     )
 
@@ -211,7 +211,7 @@ def test_yolo_import_failure_or_cancel_never_leaves_mixed_results(tmp_path, monk
 ])
 @pytest.mark.parametrize("class_id", [-1, 2])
 def test_yolo_class_ids_cannot_wrap_or_create_implicit_classes(tmp_path, mode, columns, class_id):
-    from autolabel.workbench.views.labeling.label_converter import LabelConverter
+    from autolabelt.workbench.views.labeling.label_converter import LabelConverter
 
     source = tmp_path / "frame.txt"
     source.write_text(f"{class_id} {columns}\n")
@@ -224,7 +224,7 @@ def test_yolo_class_ids_cannot_wrap_or_create_implicit_classes(tmp_path, mode, c
 
 
 def test_yolo_import_tolerates_bom_whitespace_and_blank_lines(tmp_path):
-    from autolabel.workbench.views.labeling.label_converter import LabelConverter
+    from autolabelt.workbench.views.labeling.label_converter import LabelConverter
 
     source = tmp_path / "frame.txt"
     source.write_text("\n1\t 0.5   0.5  0.5  0.5\n\n", encoding="utf-8-sig")
@@ -235,8 +235,8 @@ def test_yolo_import_tolerates_bom_whitespace_and_blank_lines(tmp_path):
 
 @pytest.mark.parametrize("result", [None, "unknown", "negative"])
 def test_fresh_batch_distinguishes_failure_unknown_class_and_valid_negative_sample(tmp_path, result):
-    from autolabel.workbench.services.auto_labeling.types import AutoLabelingResult
-    from autolabel.workbench.views.labeling.utils.batch import save_auto_labeling_result
+    from autolabelt.workbench.services.auto_labeling.types import AutoLabelingResult
+    from autolabelt.workbench.views.labeling.utils.batch import save_auto_labeling_result
 
     images, _, _ = import_dataset(tmp_path)
     image = images / "one.jpg"
@@ -273,7 +273,7 @@ def box(label, left, top, right, bottom):
 
 
 def supplement_result(shapes):
-    from autolabel.workbench.services.auto_labeling.types import AutoLabelingResult
+    from autolabelt.workbench.services.auto_labeling.types import AutoLabelingResult
 
     return AutoLabelingResult(
         [SimpleNamespace(to_dict=lambda shape=shape: shape) for shape in shapes],
@@ -292,8 +292,8 @@ def supplement_state(transaction, output_dir=None):
 
 
 def test_video_dataset_supplement_preserves_annotations_until_yolo_sync(tmp_path):
-    from autolabel.annotation_bridge import prepare_review_dataset, sync_review_to_yolo
-    from autolabel.workbench.views.labeling.utils.batch import save_auto_labeling_result
+    from autolabelt.annotation_bridge import prepare_review_dataset, sync_review_to_yolo
+    from autolabelt.workbench.views.labeling.utils.batch import save_auto_labeling_result
 
     images, labels, _ = import_dataset(tmp_path)
     for path in images.glob("*.json"):
@@ -329,7 +329,7 @@ def test_video_dataset_supplement_preserves_annotations_until_yolo_sync(tmp_path
 
 
 def test_supplement_reads_external_yolo_before_creating_json(tmp_path):
-    from autolabel.workbench.views.labeling.utils.batch import save_auto_labeling_result
+    from autolabelt.workbench.views.labeling.utils.batch import save_auto_labeling_result
 
     images, labels, _ = import_dataset(tmp_path)
     image = images / "one.jpg"
@@ -352,7 +352,7 @@ def test_supplement_reads_external_yolo_before_creating_json(tmp_path):
 
 @pytest.mark.parametrize("interruption", ["cancel", "edit"])
 def test_supplement_retains_old_files_on_cancel_or_concurrent_edit(tmp_path, interruption):
-    from autolabel.workbench.views.labeling.utils.batch import save_auto_labeling_result
+    from autolabelt.workbench.views.labeling.utils.batch import save_auto_labeling_result
 
     images, _, _ = import_dataset(tmp_path)
     image = images / "one.jpg"
@@ -372,11 +372,11 @@ def test_supplement_retains_old_files_on_cancel_or_concurrent_edit(tmp_path, int
 
 def test_external_import_runs_supplement_from_batch_dialog(tmp_path, monkeypatch):
     from PyQt6 import QtCore, QtTest, QtWidgets
-    from autolabel.desktop import AutoLabelMainWindow
-    from autolabel.workbench import config as settings
-    from autolabel.workbench.resources import resources
-    from autolabel.workbench.views.labeling.utils import batch
-    from autolabel.workbench.views.labeling.utils.upload import _import_yolo_annotations
+    from autolabelt.desktop import AutoLabelMainWindow
+    from autolabelt.workbench import config as settings
+    from autolabelt.workbench.resources import resources
+    from autolabelt.workbench.views.labeling.utils import batch
+    from autolabelt.workbench.views.labeling.utils.upload import _import_yolo_annotations
 
     images, labels, converter = import_dataset(tmp_path)
     progress = SimpleNamespace(setMaximum=lambda _: None, setValue=lambda _: None, wasCanceled=lambda: False)

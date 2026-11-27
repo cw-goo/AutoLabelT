@@ -1,7 +1,7 @@
 """The label I/O checks remain independent of the removed prototype interface."""
 import pytest
 
-from autolabel.annotations import read_labels, write_labels
+from autolabelt.annotations import read_labels, write_labels
 
 
 def test_required_label_distinguishes_missing_from_empty(tmp_path):

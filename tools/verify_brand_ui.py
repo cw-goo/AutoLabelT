@@ -6,11 +6,11 @@ import tempfile
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 
-from autolabel.workbench import config
-from autolabel.workbench.resources import resources
-from autolabel.workbench.views.labeling.utils.theme import init_theme, get_app_stylesheet
-from autolabel.appearance import stylesheet
-from autolabel.desktop import AutoLabelMainWindow, brand_icon
+from autolabelt.workbench import config
+from autolabelt.workbench.resources import resources
+from autolabelt.workbench.views.labeling.utils.theme import init_theme, get_app_stylesheet
+from autolabelt.appearance import stylesheet
+from autolabelt.desktop import AutoLabelMainWindow, brand_icon
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,7 +71,7 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="preview-", dir=output) as temporary:
         config._work_directory = temporary
-        config.current_config_file = str(Path(temporary) / ".autolabelrc")
+        config.current_config_file = str(Path(temporary) / ".autolabeltrc")
         settings_type = QtCore.QSettings
 
         class PreviewSettings(settings_type):

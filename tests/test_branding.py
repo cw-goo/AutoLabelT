@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 
 def test_svg_export_keeps_adjacent_colour_shapes_opaque(tmp_path):
     from PyQt6 import QtGui
@@ -21,7 +23,7 @@ def test_svg_export_keeps_adjacent_colour_shapes_opaque(tmp_path):
 
 
 def test_branded_banner_has_no_upstream_links():
-    from autolabel.branding import startup_banner
+    from autolabelt.branding import startup_banner
 
     banner = startup_banner()
     assert "AutoLabelT" in banner
@@ -34,7 +36,7 @@ def test_branded_banner_has_no_upstream_links():
 
 def test_banner_colors_only_in_interactive_mode():
     from io import StringIO
-    from autolabel.branding import startup_banner, write_startup_banner
+    from autolabelt.branding import startup_banner, write_startup_banner
 
     assert "\x1b[" in startup_banner(use_color=True)
     output = StringIO()
@@ -43,26 +45,30 @@ def test_banner_colors_only_in_interactive_mode():
     assert "\x1b[" not in output.getvalue()
 
 
-def test_autolabel_config_migrates_without_changing_upstream(monkeypatch, tmp_path):
-    from autolabel.workbench import config
+@pytest.mark.parametrize("legacy_name", [".autolabelrc", ".xanylabelingrc", ".anylabelingrc"])
+def test_autolabelt_config_migrates_without_changing_legacy_file(monkeypatch, tmp_path, legacy_name):
+    from autolabelt.workbench import config
 
     monkeypatch.setattr(config, "_work_directory", str(tmp_path))
-    previous = tmp_path / ".xanylabelingrc"
+    previous = tmp_path / legacy_name
     previous.write_text("language: zh_CN\n", encoding="utf-8")
     monkeypatch.setenv("AUTOLABEL_INTEGRATED_WORKBENCH", "1")
     config.get_default_config()
-    copied = tmp_path / ".autolabelrc"
+    copied = tmp_path / ".autolabeltrc"
     assert copied.read_bytes() == previous.read_bytes()
-    assert config.get_user_config_name() == ".autolabelrc"
+    assert config.get_user_config_name() == ".autolabeltrc"
     monkeypatch.delenv("AUTOLABEL_INTEGRATED_WORKBENCH")
-    assert config.get_user_config_name() == ".autolabelrc"
+    assert config.get_user_config_name() == ".autolabeltrc"
     assert previous.read_text(encoding="utf-8") == "language: zh_CN\n"
+    copied.write_text("language: en_US\n", encoding="utf-8")
+    config.get_default_config()
+    assert copied.read_text(encoding="utf-8") == "language: en_US\n"
 
 
 def test_autolabel_cli_reports_own_version_and_config(monkeypatch, capsys, tmp_path):
     import sys
-    from autolabel.workbench import config
-    from autolabel.desktop import main
+    from autolabelt.workbench import config
+    from autolabelt.desktop import main
 
     monkeypatch.setenv("AUTOLABEL_INTEGRATED_WORKBENCH", "1")
     monkeypatch.setattr(config, "_work_directory", str(tmp_path))
@@ -75,4 +81,4 @@ def test_autolabel_cli_reports_own_version_and_config(monkeypatch, capsys, tmp_p
     assert "0.1.0" in capsys.readouterr().out
     monkeypatch.setattr(sys, "argv", ["autolabelt", "--work-dir", str(tmp_path), "config"])
     main()
-    assert str(Path(tmp_path) / ".autolabelrc") in capsys.readouterr().out
+    assert str(Path(tmp_path) / ".autolabeltrc") in capsys.readouterr().out

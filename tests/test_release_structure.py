@@ -11,36 +11,36 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_all_application_imports_resolve_in_autolabel_namespace():
-    for path in (ROOT / "autolabel").rglob("*.py"):
+def test_all_application_imports_resolve_in_autolabelt_namespace():
+    for path in (ROOT / "autolabelt").rglob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
         for node in ast.walk(tree):
             imports = ([alias.name for alias in node.names] if isinstance(node, ast.Import)
                        else [node.module] if isinstance(node, ast.ImportFrom) and not node.level
                        and node.module else [])
             for name in imports:
-                assert name != "anylabeling" and not name.startswith("anylabeling."), path
-                if name.startswith("autolabel."):
+                assert name.partition(".")[0] not in {"anylabeling", "autolabel"}, path
+                if name.startswith("autolabelt."):
                     module = ROOT.joinpath(*name.split("."))
                     assert module.is_dir() or module.with_suffix(".py").is_file(), (path, name)
 
 
 def test_packaged_qt_resources_and_translations_load():
     from PyQt6 import QtCore
-    from autolabel.workbench.resources import resources
+    from autolabelt.workbench.resources import resources
 
-    assert files("autolabel.workbench").joinpath("configs/autolabel_config.yaml").is_file()
-    assert files("autolabel.workbench").joinpath("resources/resources.rcc").is_file()
+    assert files("autolabelt.workbench").joinpath("configs/autolabelt_config.yaml").is_file()
+    assert files("autolabelt.workbench").joinpath("resources/resources.rcc").is_file()
     assert QtCore.QFile.exists(":/images/images/icon.png")
     # Both workbench icon aliases must ship the current shared brand asset.
     for extension in ("png", "svg"):
-        logo = files("autolabel").joinpath(f"assets/logo.{extension}").read_bytes()
+        logo = files("autolabelt").joinpath(f"assets/logo.{extension}").read_bytes()
         for name in ("icon", "logo"):
             resource = QtCore.QFile(f":/images/images/{name}.{extension}")
             assert resource.open(QtCore.QIODevice.OpenModeFlag.ReadOnly)
             assert bytes(resource.readAll()) == logo
             resource.close()
-    assert files("autolabel.workbench").joinpath("configs/models.yaml").is_file()
+    assert files("autolabelt.workbench").joinpath("configs/models.yaml").is_file()
     translator = QtCore.QTranslator()
     assert translator.load(":/languages/translations/zh_CN.qm")
     assert translator.translate(
@@ -51,7 +51,7 @@ def test_packaged_qt_resources_and_translations_load():
 def test_brand_logo_is_editable_vector_and_renders_at_icon_sizes():
     from PyQt6 import QtCore, QtGui, QtSvg
 
-    source = files("autolabel").joinpath("assets/logo.svg").read_text(encoding="utf-8")
+    source = files("autolabelt").joinpath("assets/logo.svg").read_text(encoding="utf-8")
     tree = ET.fromstring(source)
     assert tree.findall(".//{http://www.w3.org/2000/svg}path")
     assert not tree.findall(".//{http://www.w3.org/2000/svg}image")
@@ -69,24 +69,24 @@ def test_brand_logo_is_editable_vector_and_renders_at_icon_sizes():
 
 
 def test_all_launch_modes_display_autolabelt_and_keep_configuration(monkeypatch):
-    from autolabel.workbench import app_info, config
-    from autolabel.workbench.app import build_startup_banner
+    from autolabelt.workbench import app_info, config
+    from autolabelt.workbench.app import build_startup_banner
 
     assert app_info.__appname__ == "AutoLabelT"
     assert app_info.__version__ == "0.1.0"
     assert "AutoLabelT" in build_startup_banner(lambda text, color: text)
     monkeypatch.delenv("AUTOLABEL_INTEGRATED_WORKBENCH", raising=False)
-    assert config.get_user_config_name() == ".autolabelrc"
+    assert config.get_user_config_name() == ".autolabeltrc"
     monkeypatch.setenv("AUTOLABEL_INTEGRATED_WORKBENCH", "1")
-    assert config.get_user_config_name() == ".autolabelrc"
+    assert config.get_user_config_name() == ".autolabeltrc"
 
 
 def test_default_application_update_checks_do_not_contact_upstream(monkeypatch):
     import requests
-    from autolabel.workbench.views.labeling.utils.update_checker import (
+    from autolabelt.workbench.views.labeling.utils.update_checker import (
         check_for_updates_async, check_for_updates_sync,
     )
-    from autolabel.workbench.services.updates.protocol import DEFAULT_FEED
+    from autolabelt.workbench.services.updates.protocol import DEFAULT_FEED
 
     def unexpected_request(*args, **kwargs):
         raise AssertionError("No application feed has been configured")
@@ -99,21 +99,23 @@ def test_default_application_update_checks_do_not_contact_upstream(monkeypatch):
 
 def test_distribution_uses_only_current_package_and_license_paths():
     metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    assert metadata["project"]["scripts"] == {"autolabelt": "autolabel.desktop:main"}
-    assert metadata["tool"]["setuptools"]["packages"]["find"]["include"] == ["autolabel*"]
+    assert metadata["project"]["name"] == "autolabelt"
+    assert metadata["project"]["scripts"] == {"autolabelt": "autolabelt.desktop:main"}
+    assert metadata["tool"]["setuptools"]["packages"]["find"]["include"] == ["autolabelt*"]
     assert metadata["project"]["license-files"] == ["LICENSE", "THIRD_PARTY_NOTICES.md"]
     assert (ROOT / "LICENSE").is_file()
     assert (ROOT / "THIRD_PARTY_NOTICES.md").is_file()
     assert not (ROOT / "anylabeling").exists()
-    assert not (ROOT / "autolabel/ui.py").exists()
-    assert not (ROOT / "autolabel/review.py").exists()
+    assert not (ROOT / "autolabel").exists()
+    assert not (ROOT / "autolabelt/ui.py").exists()
+    assert not (ROOT / "autolabelt/review.py").exists()
 
 
 def test_packaged_onnx_runtime_loads_runs_and_reads_model_metadata(tmp_path):
     import numpy as np
     import onnx
     from onnx import TensorProto, helper
-    from autolabel.workbench.services.auto_labeling.engines.build_onnx_engine import OnnxBaseModel
+    from autolabelt.workbench.services.auto_labeling.engines.build_onnx_engine import OnnxBaseModel
 
     graph = helper.make_graph(
         [helper.make_node("Identity", ["input"], ["output"])],
@@ -138,7 +140,7 @@ def test_packaged_onnx_runtime_loads_runs_and_reads_model_metadata(tmp_path):
     [("auto", True, True), ("auto", False, False), ("cpu", True, False)],
 )
 def test_onnx_session_prefers_cuda_and_respects_cpu(monkeypatch, device, cuda_available, use_cuda):
-    from autolabel.workbench.services.auto_labeling.engines import build_onnx_engine as engine
+    from autolabelt.workbench.services.auto_labeling.engines import build_onnx_engine as engine
 
     cuda = engine.CUDA_PROVIDER
     cpu = engine.CPU_PROVIDER

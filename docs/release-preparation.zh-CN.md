@@ -1,13 +1,13 @@
-# AutoLabel 发布清理记录
+# AutoLabelT 发布清理记录
 
 本次整理面向 GitHub 源码发布，保留现有视频算法、标注格式、图片模型目录和可用功能；未创建提交或向远端推送。
 
 ## 命名与目录
 
-- 标注内核已移入 `autolabel/workbench/`，全部应用导入使用 AutoLabel 命名空间。
-- 标签桥接模块改名为 `autolabel/annotation_bridge.py`，默认配置模板改为 `autolabel_config.yaml`。
-- 启动命令、工作台身份、日志、环境变量、内部通信标识、图标和翻译已统一为 AutoLabel。
-- 默认用户配置统一为 `.autolabelrc`，历史配置和图片模型缓存保留迁移读取，避免丢失用户设置或重复下载。
+- 标注内核位于 `autolabelt/workbench/`，应用导入使用 `autolabelt` 命名空间。
+- 标签桥接模块改名为 `autolabelt/annotation_bridge.py`，默认配置模板改为 `autolabelt_config.yaml`。
+- 启动命令为 `autolabelt`，界面名称为 AutoLabelT。Qt 设置和内部协议沿用原有标识。
+- 默认用户配置为 `.autolabeltrc`，首次启动时可复制旧版配置。模型缓存继续使用现有路径，避免重复下载。
 - GPL 许可文本移到根目录 `LICENSE`，来源及保留的版权声明见 `THIRD_PARTY_NOTICES.md`。
 
 第三方作者署名、许可证、有效上游模型下载地址及历史数据迁移字符串保留真实名称。修改这些地址会破坏下载或抹去来源，不能通过替换品牌使其成为本项目自有资源。
@@ -26,7 +26,7 @@ Qt 资源由可重建的 `resources.rcc` 提供，替代数兆字节的内嵌 Py
 
 补齐了原 wheel 漏装的模型词表、Tokenizer JSON 及 C++/CUDA 辅助源文件，共25项。补齐界面实际导入的依赖声明，防止仅依赖开发机器已安装的额外包。源分发清单限定在实际源码及资源目录，防止全局 UI 文件规则把本地测试安装目录带入压缩包。
 
-应用更新检查在没有 AutoLabel 自有发布源时关闭，不再把上游软件的发布包视为本应用更新。图片和视频模型下载仍使用各自真实来源。帮助入口指向 AutoLabel 使用说明，移除了不属于本分发版本的赞助入口。
+应用更新检查在没有 AutoLabelT 自有发布源时关闭，不再把上游软件的发布包视为本应用更新。图片和视频模型下载仍使用各自真实来源。帮助入口指向 AutoLabelT 使用说明，移除了不属于本分发版本的赞助入口。
 
 ## 验证结果
 
@@ -45,7 +45,7 @@ Qt 资源由可重建的 `resources.rcc` 提供，替代数兆字节的内嵌 Py
 python -m pytest -q tests
 python tools/check_release.py --check-index
 python tools/build_distribution.py --output-dir dist --sdist
-python tools/check_distribution.py dist/autolabel-0.1.0-py3-none-any.whl
+python tools/check_distribution.py dist/autolabelt-0.1.0-py3-none-any.whl
 ```
 
 `check_release.py` 为只读检查，检查路径、导入、必要资源、明显凭据模式及暂存区中的本地文件；它不能替代人工审查。`check_distribution.py` 将安装包与当前应用文件比较，并可通过 `--sdist` 同时检查源压缩包。

@@ -1,6 +1,6 @@
 # 本地输出与干净构建
 
-`autolabel/` 保存正式程序源码、模型适配器、标注工作台与运行资源，纳入 Git。`artifacts/` 保存本地输出，已由 `.gitignore` 和源码分发清单排除，软件正常启动不依赖其内容。
+`autolabelt/` 保存正式程序源码、模型适配器、标注工作台与运行资源，纳入 Git。`artifacts/` 保存本地输出，已由 `.gitignore` 和源码分发清单排除，软件正常启动不依赖其内容。
 
 ## 输出目录
 
@@ -20,7 +20,7 @@
 
 ```bash
 python tools/build_distribution.py --output-dir artifacts/release --sdist
-python tools/check_distribution.py artifacts/release/autolabel-0.1.0-py3-none-any.whl --sdist artifacts/release/autolabel-0.1.0.tar.gz
+python tools/check_distribution.py artifacts/release/autolabelt-0.1.0-py3-none-any.whl --sdist artifacts/release/autolabelt-0.1.0.tar.gz
 ```
 
 `build_distribution.py` 仅复制构建所需的源码、资源、文档和工具到临时目录，不复用根目录的 `build/`、包元数据或本地测试环境。构建完成后先与当前源码核对，再复制至输出目录。

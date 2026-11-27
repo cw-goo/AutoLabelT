@@ -17,7 +17,7 @@ def main():
     if not args.rcc or not args.lrelease:
         parser.error("Qt rcc and lrelease are required; supply their absolute paths")
     root = Path(__file__).resolve().parents[1]
-    resources = root / "autolabel/workbench/resources"
+    resources = root / "autolabelt/workbench/resources"
     for source in sorted((resources / "translations").glob("*.ts")):
         subprocess.run([args.lrelease, str(source), "-qm", str(source.with_suffix(".qm"))], check=True)
     subprocess.run([

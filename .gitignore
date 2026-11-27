@@ -47,6 +47,7 @@ dist/
 
 # Local settings and secrets
 /.autolabelrc
+/.autolabeltrc
 /.env
 /.env.*
 !/.env.example

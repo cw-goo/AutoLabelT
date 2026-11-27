@@ -32,11 +32,11 @@ from zipfile import BadZipFile, ZipFile
 
 if not (3, 11) <= sys.version_info[:2] < (3, 13):
     raise SystemExit('AutoLabelT requires Python 3.11 or 3.12')
-entries = distribution('autolabel').entry_points
+entries = distribution('autolabelt').entry_points
 launcher = Path(sysconfig.get_path('scripts')) / 'autolabelt.exe'
 if not launcher.is_file() or not any(
     entry.group == 'console_scripts' and entry.name == 'autolabelt'
-    and entry.value == 'autolabel.desktop:main' for entry in entries
+    and entry.value == 'autolabelt.desktop:main' for entry in entries
 ):
     raise SystemExit('The autolabelt launcher is missing. Reinstall AutoLabelT first.')
 
@@ -44,7 +44,7 @@ if not launcher.is_file() or not any(
 try:
     with ZipFile(sys.argv[1]) as legacy:
         script = legacy.read('__main__.py')
-        remove_legacy = b'from autolabel.desktop import main' in script and b'sys.exit(main())' in script
+        remove_legacy = b'from autolabelt.desktop import main' in script and b'sys.exit(main())' in script
 except (OSError, BadZipFile, KeyError, RuntimeError):
     remove_legacy = False
 

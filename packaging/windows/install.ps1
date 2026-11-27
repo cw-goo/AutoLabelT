@@ -1,11 +1,11 @@
 param(
     [string]$Python = "",
-    [string]$InstallDir = (Join-Path $env:LOCALAPPDATA "Programs/AutoLabel"),
+    [string]$InstallDir = (Join-Path $env:LOCALAPPDATA "Programs/AutoLabelT"),
     [switch]$NoShortcut
 )
 
 $ErrorActionPreference = "Stop"
-$wheel = Get-ChildItem -LiteralPath $PSScriptRoot -Filter "autolabel-*.whl" -File | Select-Object -First 1
+$wheel = Get-ChildItem -LiteralPath $PSScriptRoot -Filter "autolabelt-*.whl" -File | Select-Object -First 1
 if (-not $wheel) { throw "AutoLabelT wheel is missing from this folder" }
 
 if (-not $Python) {
@@ -33,7 +33,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $scripts 'autolabelt.exe') -PathType
     & $venvPython -m pip install --force-reinstall --no-deps $wheel.FullName
     if ($LASTEXITCODE -ne 0) { throw "Could not update the AutoLabelT launcher" }
 }
-& $venvPython -c "import autolabel.workbench, PyQt6, cv2, torch, ultralytics, onnx, onnxruntime; from importlib.resources import files; assert files('autolabel').joinpath('assets/logo.png').is_file(); assert files('autolabel.workbench').joinpath('configs/autolabel_config.yaml').is_file(); from autolabel.workbench.resources import resources"
+& $venvPython -c "import autolabelt.workbench, PyQt6, cv2, torch, ultralytics, onnx, onnxruntime; from importlib.resources import files; assert files('autolabelt').joinpath('assets/logo.png').is_file(); assert files('autolabelt.workbench').joinpath('configs/autolabelt_config.yaml').is_file(); from autolabelt.workbench.resources import resources"
 if ($LASTEXITCODE -ne 0) { throw "Installation verification failed" }
 
 & (Join-Path $PSScriptRoot "register-command.ps1") -Python $venvPython
@@ -51,7 +51,7 @@ if (-not $NoShortcut) {
     $shell = New-Object -ComObject WScript.Shell
     $shortcut = $shell.CreateShortcut((Join-Path $startMenu "AutoLabelT.lnk"))
     $shortcut.TargetPath = Join-Path $scripts 'pythonw.exe'
-    $shortcut.Arguments = "-m autolabel"
+    $shortcut.Arguments = "-m autolabelt"
     $shortcut.WorkingDirectory = $InstallDir
     $shortcut.Description = "AutoLabelT desktop workbench for annotation and visual model training"
     $shortcut.Save()
@@ -59,7 +59,7 @@ if (-not $NoShortcut) {
         $legacyPath = Join-Path $startMenu $name
         if (Test-Path -LiteralPath $legacyPath -PathType Leaf) {
             $legacyShortcut = $shell.CreateShortcut($legacyPath)
-            if ($legacyShortcut.TargetPath -eq $shortcut.TargetPath -and $legacyShortcut.Arguments -eq $shortcut.Arguments) {
+            if ($legacyShortcut.TargetPath -eq $shortcut.TargetPath -and $legacyShortcut.Arguments -eq "-m autolabel") {
                 Remove-Item -LiteralPath $legacyPath
             }
         }

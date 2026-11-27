@@ -36,11 +36,11 @@ def render_svg(source, output, size):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", type=Path, default=ROOT / "autolabel/assets/logo.svg")
-    parser.add_argument("--png-output", type=Path, default=ROOT / "autolabel/assets/logo.png")
+    parser.add_argument("--source", type=Path, default=ROOT / "autolabelt/assets/logo.svg")
+    parser.add_argument("--png-output", type=Path, default=ROOT / "autolabelt/assets/logo.png")
     parser.add_argument("--size", type=int, default=1024)
     parser.add_argument("--output-dir", type=Path,
-                        default=ROOT / "autolabel/workbench/resources/images")
+                        default=ROOT / "autolabelt/workbench/resources/images")
     args = parser.parse_args()
     source = args.source
     if source.suffix.lower() == ".svg":

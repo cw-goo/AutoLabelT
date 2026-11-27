@@ -5,7 +5,7 @@ import json
 import numpy as np
 import pytest
 
-from autolabel.annotation_bridge import prepare_review_dataset, sync_review_to_yolo
+from autolabelt.annotation_bridge import prepare_review_dataset, sync_review_to_yolo
 
 
 def dataset(tmp_path):
@@ -23,7 +23,7 @@ def dataset(tmp_path):
 
 
 def test_yolo_json_review_roundtrip(tmp_path):
-    from autolabel.workbench.views.labeling.label_file import LabelFile
+    from autolabelt.workbench.views.labeling.label_file import LabelFile
 
     root = dataset(tmp_path)
     result = prepare_review_dataset(root)
@@ -53,7 +53,7 @@ def test_sync_rejects_invalid_category_without_overwrite(tmp_path):
 
 
 def test_numbered_bom_classes_use_same_mapping_for_validation_and_sync(tmp_path):
-    from autolabel.validate import validate_dataset
+    from autolabelt.validate import validate_dataset
 
     root = dataset(tmp_path)
     (root / "classes.txt").write_text("1 phone\n0 person\n", encoding="utf-8-sig")
@@ -94,7 +94,7 @@ def test_sync_button_opens_class_picker_and_applies_selected_file(tmp_path, monk
     from types import SimpleNamespace
 
     from PyQt6 import QtWidgets
-    from autolabel.video_dock import VideoDatasetDock
+    from autolabelt.video_dock import VideoDatasetDock
 
     root = dataset(tmp_path)
     prepare_review_dataset(root)
@@ -132,9 +132,9 @@ def test_sync_button_writes_canvas_changes_to_original_split_label(tmp_path, mon
     from PIL import Image
     from PyQt6 import QtCore, QtWidgets
 
-    from autolabel.desktop import AutoLabelMainWindow
-    from autolabel.workbench import config
-    from autolabel.workbench.resources import resources
+    from autolabelt.desktop import AutoLabelMainWindow
+    from autolabelt.workbench import config
+    from autolabelt.workbench.resources import resources
 
     root = dataset(tmp_path)
     prepare_review_dataset(root)
@@ -223,7 +223,7 @@ def test_sync_button_writes_canvas_changes_to_original_split_label(tmp_path, mon
 
 def test_sync_commit_failure_preserves_all_existing_labels(tmp_path, monkeypatch):
     import cv2
-    from autolabel.workbench.views.labeling import annotation_io
+    from autolabelt.workbench.views.labeling import annotation_io
 
     root = dataset(tmp_path)
     cv2.imwrite(str(root / "images" / "second.jpg"), np.zeros((100, 200, 3), dtype=np.uint8))

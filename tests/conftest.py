@@ -16,11 +16,11 @@ def shared_qt_application():
 
 @pytest.fixture(autouse=True)
 def isolated_configuration(monkeypatch, tmp_path):
-    from autolabel.workbench import config
+    from autolabelt.workbench import config
     from PyQt6 import QtCore
 
     monkeypatch.setattr(config, "_work_directory", str(tmp_path))
-    monkeypatch.setattr(config, "current_config_file", str(tmp_path / ".autolabelrc"))
+    monkeypatch.setattr(config, "current_config_file", str(tmp_path / ".autolabeltrc"))
     settings_type = QtCore.QSettings
 
     class IsolatedSettings(settings_type):

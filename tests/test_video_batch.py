@@ -8,8 +8,8 @@ import cv2
 import numpy as np
 import pytest
 
-from autolabel.core import DYNAMIC_JUMP_KEYS, ProjectConfig
-from autolabel.video_batch import (TargetSampler, allocate, analyze_videos, plan_signature,
+from autolabelt.core import DYNAMIC_JUMP_KEYS, ProjectConfig
+from autolabelt.video_batch import (TargetSampler, allocate, analyze_videos, plan_signature,
                                    recommend_sampling, run_batch, source_prefix)
 
 
@@ -92,7 +92,7 @@ def test_analysis_estimates_detection_counts_separately_from_qualification(tmp_p
 
 
 def test_batch_shares_detector_and_preserves_same_camera_sources(tmp_path, monkeypatch):
-    import autolabel.video_batch as batch
+    import autolabelt.video_batch as batch
     loads = []
     monkeypatch.setattr(batch, "UltralyticsDetector", lambda config: loads.append(config) or Detector())
     events = []
@@ -233,7 +233,7 @@ def test_config_backward_compatibility_and_queue_roundtrip(tmp_path):
     config = replace(config_for(tmp_path), min_sample_frames=7)
     path = tmp_path / "config.json"
     config.save(path)
-    from autolabel.core import ProjectConfig
+    from autolabelt.core import ProjectConfig
     assert ProjectConfig.load(path) == config
     data = json.loads(path.read_text(encoding="utf-8"))
     for key in ("video_paths", "target_count", "min_sample_seconds", "min_sample_frames"):
@@ -247,13 +247,13 @@ def test_config_backward_compatibility_and_queue_roundtrip(tmp_path):
 
 def test_queue_ui_reorders_removes_and_reads_target(monkeypatch):
     from PyQt6 import QtWidgets
-    from autolabel.video_dock import VideoDatasetDock
+    from autolabelt.video_dock import VideoDatasetDock
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     window = QtWidgets.QMainWindow()
     dock = VideoDatasetDock(window)
     monkeypatch.setattr(QtWidgets.QFileDialog, "getOpenFileNames", lambda *args: (["a.mp4", "b.mp4", "a.mp4"], ""))
-    monkeypatch.setattr("autolabel.video_dock.video_info", lambda path: {
+    monkeypatch.setattr("autolabelt.video_dock.video_info", lambda path: {
         "width": 100, "height": 200, "fps": 2, "frames": 120, "duration": 60})
     dock.choose_video()
     assert dock.config.video_paths == ["a.mp4", "b.mp4"]
@@ -271,7 +271,7 @@ def test_queue_ui_reorders_removes_and_reads_target(monkeypatch):
 
 def test_dock_fills_sampling_table_and_replans_without_inference(tmp_path, monkeypatch):
     from PyQt6 import QtCore, QtWidgets
-    from autolabel.video_dock import ParameterDialog, VideoDatasetDock
+    from autolabelt.video_dock import ParameterDialog, VideoDatasetDock
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -283,7 +283,7 @@ def test_dock_fills_sampling_table_and_replans_without_inference(tmp_path, monke
     config = replace(config_for(tmp_path, [str(source)], 0), model_path=str(weight),
                      min_sample_seconds=2)
     monkeypatch.setattr(QtWidgets.QFileDialog, "getOpenFileNames", lambda *args: ([str(source)], ""))
-    monkeypatch.setattr("autolabel.video_dock.video_info", lambda path: {
+    monkeypatch.setattr("autolabelt.video_dock.video_info", lambda path: {
         "width": 100, "height": 200, "fps": 2, "frames": 120, "duration": 60})
     dock.choose_video()
     dock.config = replace(config, output_dir="")
@@ -343,7 +343,7 @@ def test_dock_fills_sampling_table_and_replans_without_inference(tmp_path, monke
 
 def test_build_updates_a_single_status_and_logs_only_video_milestones(monkeypatch):
     from PyQt6 import QtCore, QtWidgets
-    from autolabel.video_dock import VideoDatasetDock
+    from autolabelt.video_dock import VideoDatasetDock
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -373,8 +373,8 @@ def test_build_updates_a_single_status_and_logs_only_video_milestones(monkeypatc
 
 
 def test_worker_analyzes_then_builds_with_cached_plan_and_live_labels(tmp_path, monkeypatch):
-    from autolabel.video_dock import VideoPipelineWorker
-    from autolabel.validate import validate_dataset
+    from autolabelt.video_dock import VideoPipelineWorker
+    from autolabelt.validate import validate_dataset
     sources = [tmp_path / "a.mp4", tmp_path / "b.mp4"]
     model = tmp_path / "model.pt"
     for path in [*sources, model]:
@@ -382,7 +382,7 @@ def test_worker_analyzes_then_builds_with_cached_plan_and_live_labels(tmp_path, 
     config = config_for(tmp_path / "dataset", [str(path) for path in sources], 12)
     config.model_path = str(model)
     monkeypatch.setattr(cv2, "VideoCapture", Capture)
-    monkeypatch.setattr("autolabel.video_batch.UltralyticsDetector", lambda _: Detector())
+    monkeypatch.setattr("autolabelt.video_batch.UltralyticsDetector", lambda _: Detector())
     failures, analyzed, built = [], [], []
     analysis = VideoPipelineWorker(config, analyze_only=True)
     analysis.failed.connect(failures.append)
@@ -403,8 +403,8 @@ def test_worker_analyzes_then_builds_with_cached_plan_and_live_labels(tmp_path, 
 
 def test_desktop_reanalyzes_and_continues_with_one_video_import(tmp_path, monkeypatch):
     from PyQt6 import QtCore, QtTest, QtWidgets
-    from autolabel.models.downloader import model_path
-    from autolabel.video_dock import ParameterDialog, VideoDatasetDock
+    from autolabelt.models.downloader import model_path
+    from autolabelt.video_dock import ParameterDialog, VideoDatasetDock
 
     app = QtWidgets.QApplication.instance()
     window = QtWidgets.QMainWindow()
@@ -426,7 +426,7 @@ def test_desktop_reanalyzes_and_continues_with_one_video_import(tmp_path, monkey
     monkeypatch.setattr(QtWidgets.QFileDialog, "getOpenFileNames", lambda *args: (paths, ""))
     monkeypatch.setattr(cv2, "VideoCapture", Capture)
     loads = []
-    monkeypatch.setattr("autolabel.video_batch.UltralyticsDetector",
+    monkeypatch.setattr("autolabelt.video_batch.UltralyticsDetector",
                         lambda config: loads.append(config.model_id) or Detector())
     errors = []
     monkeypatch.setattr(dock, "_error", errors.append)
@@ -497,14 +497,14 @@ def test_desktop_reanalyzes_and_continues_with_one_video_import(tmp_path, monkey
 
 
 def test_direct_build_publishes_plan_for_parameter_table(tmp_path, monkeypatch):
-    from autolabel.video_dock import VideoPipelineWorker
+    from autolabelt.video_dock import VideoPipelineWorker
 
     source, model = tmp_path / "a.mp4", tmp_path / "model.pt"
     source.touch()
     model.touch()
     config = replace(config_for(tmp_path / "dataset", [str(source)], 4), model_path=str(model))
     monkeypatch.setattr(cv2, "VideoCapture", Capture)
-    monkeypatch.setattr("autolabel.video_batch.UltralyticsDetector", lambda _: Detector())
+    monkeypatch.setattr("autolabelt.video_batch.UltralyticsDetector", lambda _: Detector())
     worker = VideoPipelineWorker(config)
     events, failures = [], []
     worker.progress.connect(events.append)

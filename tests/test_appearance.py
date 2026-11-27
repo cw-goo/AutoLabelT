@@ -2,7 +2,7 @@
 
 from PyQt6 import QtCore, QtWidgets
 
-from autolabel.appearance import SoftButtonMotion, stylesheet
+from autolabelt.appearance import SoftButtonMotion, stylesheet
 
 
 def test_light_and_dark_palettes_cover_controls():

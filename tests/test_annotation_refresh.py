@@ -14,7 +14,7 @@ class Palette(list):
 
 
 def test_io_open_releases_handles_on_success_and_failure(tmp_path):
-    from autolabel.workbench.views.labeling.utils._io import io_open
+    from autolabelt.workbench.views.labeling.utils._io import io_open
 
     path = tmp_path / "annotation.json"
     with io_open(path, "w") as stream:
@@ -28,7 +28,7 @@ def test_io_open_releases_handles_on_success_and_failure(tmp_path):
 
 
 def test_fresh_batch_clears_selected_sidecars_and_palette_before_inference(tmp_path, monkeypatch):
-    from autolabel.workbench.views.labeling.utils import batch
+    from autolabelt.workbench.views.labeling.utils import batch
 
     images, output = tmp_path / "images", tmp_path / "output"
     images.mkdir()
@@ -76,7 +76,7 @@ def test_fresh_batch_clears_selected_sidecars_and_palette_before_inference(tmp_p
 
 
 def test_batch_does_not_start_when_old_annotations_cannot_be_deleted(monkeypatch, tmp_path):
-    from autolabel.workbench.views.labeling.utils import batch
+    from autolabelt.workbench.views.labeling.utils import batch
 
     messages = []
     state = SimpleNamespace(_batch_clear_annotations=True, _batch_processing_active=False,
@@ -97,7 +97,7 @@ def test_batch_does_not_start_when_old_annotations_cannot_be_deleted(monkeypatch
 
 
 def test_batch_save_permission_error_is_propagated(tmp_path, monkeypatch):
-    from autolabel.workbench.views.labeling.utils import batch
+    from autolabelt.workbench.views.labeling.utils import batch
 
     path = tmp_path / "one.jpg"
     path.with_suffix(".json").write_text('{"shapes": []}')
@@ -115,8 +115,8 @@ def test_batch_save_permission_error_is_propagated(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("cancelled", [False, True])
 def test_batch_finish_commits_only_on_success_and_restores_on_cancel(tmp_path, monkeypatch, cancelled):
-    from autolabel.workbench.views.labeling.utils import batch
-    from autolabel.workbench.views.labeling.annotation_io import AnnotationTransaction, atomic_write_json
+    from autolabelt.workbench.views.labeling.utils import batch
+    from autolabelt.workbench.views.labeling.annotation_io import AnnotationTransaction, atomic_write_json
 
     image = tmp_path / "one.jpg"
     image.touch()
@@ -158,8 +158,8 @@ def test_yolo_import_replaces_old_class_palette_unless_preserving(tmp_path, monk
     import cv2
     import numpy as np
     from PyQt6 import QtCore, QtWidgets
-    from autolabel.workbench.views.labeling.utils import upload
-    from autolabel.workbench.views.labeling.widgets.unique_label_qlist_widget import UniqueLabelQListWidget
+    from autolabelt.workbench.views.labeling.utils import upload
+    from autolabelt.workbench.views.labeling.widgets.unique_label_qlist_widget import UniqueLabelQListWidget
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -179,7 +179,7 @@ def test_yolo_import_replaces_old_class_palette_unless_preserving(tmp_path, monk
     parent.label_dialog = SimpleNamespace(label_list=QtWidgets.QListWidget())
     parent.label_dialog.label_list.addItem("old")
     parent._get_rgb_by_label = lambda _: (255, 0, 0)
-    from autolabel.workbench.views.labeling.label_widget import LabelingWidget
+    from autolabelt.workbench.views.labeling.label_widget import LabelingWidget
     parent.load_labels = lambda labels: LabelingWidget.load_labels(parent, labels)
     messages = []
 

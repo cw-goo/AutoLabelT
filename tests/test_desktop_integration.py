@@ -7,13 +7,13 @@ def test_restored_workbench_has_video_dock(monkeypatch, tmp_path):
     import cv2
     import numpy as np
     from PyQt6 import QtCore, QtGui, QtWidgets
-    from autolabel.workbench import config as settings
-    from autolabel.workbench.resources import resources
-    from autolabel.desktop import AutoLabelMainWindow
+    from autolabelt.workbench import config as settings
+    from autolabelt.workbench.resources import resources
+    from autolabelt.desktop import AutoLabelMainWindow
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    settings.current_config_file = str(tmp_path / ".autolabelrc")
+    settings.current_config_file = str(tmp_path / ".autolabeltrc")
     window = AutoLabelMainWindow(application, config=settings.get_config())
     temporary_settings = QtCore.QSettings(
         str(tmp_path / "window.ini"), QtCore.QSettings.Format.IniFormat)
@@ -95,7 +95,7 @@ def test_restored_workbench_has_video_dock(monkeypatch, tmp_path):
     (tmp_path / "dataset" / "classes.txt").write_text("person\n", encoding="utf-8")
     cv2.imwrite(str(images / "frame.jpg"), np.zeros((60, 80, 3), dtype=np.uint8))
     (labels / "frame.txt").write_text("0 0.5 0.5 0.5 0.5\n", encoding="utf-8")
-    from autolabel.annotation_bridge import prepare_review_dataset
+    from autolabelt.annotation_bridge import prepare_review_dataset
     prepare_review_dataset(tmp_path / "dataset")
     dock.config.output_dir = str(tmp_path / "dataset")
     dock.open_review()
@@ -104,7 +104,7 @@ def test_restored_workbench_has_video_dock(monkeypatch, tmp_path):
     second = images / "frame_2.jpg"
     cv2.imwrite(str(second), np.zeros((60, 80, 3), dtype=np.uint8))
     (labels / "frame_2.txt").write_text("0 0.5 0.5 0.5 0.5\n", encoding="utf-8")
-    from autolabel.annotation_bridge import prepare_review_image
+    from autolabelt.annotation_bridge import prepare_review_image
     prepare_review_image(tmp_path / "dataset", second)
     dock._show_live_image(str(second))
     application.processEvents()
@@ -123,11 +123,11 @@ def test_restored_workbench_has_video_dock(monkeypatch, tmp_path):
     (other_images.parent / "classes.txt").write_text("hat\nhat2\n", encoding="utf-8")
     cv2.imwrite(str(other_images / "other.jpg"), np.zeros((60, 80, 3), dtype=np.uint8))
     view.import_image_folder(str(other_images))
-    from autolabel.workbench.views.labeling.label_schema import palette_names
+    from autolabelt.workbench.views.labeling.label_schema import palette_names
     assert palette_names(view) == ["hat", "hat2"]
     assert [view.label_dialog.label_list.item(i).text()
             for i in range(view.label_dialog.label_list.count())] == ["hat", "hat2"]
-    from autolabel.workbench.views.labeling.annotation_io import AnnotationTransaction
+    from autolabelt.workbench.views.labeling.annotation_io import AnnotationTransaction
     target = other_images / "other.json"
     with AnnotationTransaction([target]) as transaction:
         view._batch_transaction = transaction
@@ -137,7 +137,7 @@ def test_restored_workbench_has_video_dock(monkeypatch, tmp_path):
         assert view.label_file.filename == str(target)
     del view._batch_transaction
     view.load_labels(["third"], clear_existing=False)
-    from autolabel.workbench.services.auto_labeling.types import AutoLabelingResult
+    from autolabelt.workbench.services.auto_labeling.types import AutoLabelingResult
     with monkeypatch.context() as scope:
         scope.setattr(view.auto_labeling_widget.model_manager, "loaded_model_config",
                       {"classes": ["hat", "hat2"]})
@@ -150,8 +150,8 @@ def test_restored_workbench_has_video_dock(monkeypatch, tmp_path):
 
 def test_video_sidebar_spacing_and_scroll_keep_controls_reachable(monkeypatch):
     from PyQt6 import QtCore, QtWidgets
-    from autolabel.appearance import stylesheet
-    from autolabel.video_dock import VideoDatasetDock
+    from autolabelt.appearance import stylesheet
+    from autolabelt.video_dock import VideoDatasetDock
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -191,17 +191,17 @@ def test_image_model_accepts_local_yolo_weight(monkeypatch, tmp_path):
     import pytest
     import yaml
     from PyQt6 import QtWidgets
-    from autolabel.workbench import config as settings
-    from autolabel.workbench.resources import resources
-    from autolabel.desktop import AutoLabelMainWindow
+    from autolabelt.workbench import config as settings
+    from autolabelt.workbench.resources import resources
+    from autolabelt.desktop import AutoLabelMainWindow
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    settings.current_config_file = str(tmp_path / ".autolabelrc")
+    settings.current_config_file = str(tmp_path / ".autolabeltrc")
     window = AutoLabelMainWindow(application, config=settings.get_config())
     widget = window.labeling_widget.view.auto_labeling_widget
     monkeypatch.setattr(
-        "autolabel.workbench.views.labeling.widgets.auto_labeling.auto_labeling.get_work_directory",
+        "autolabelt.workbench.views.labeling.widgets.auto_labeling.auto_labeling.get_work_directory",
         lambda: str(tmp_path))
     loaded = []
     monkeypatch.setattr(widget, "load_custom_model_config",
@@ -209,7 +209,7 @@ def test_image_model_accepts_local_yolo_weight(monkeypatch, tmp_path):
     weight = tmp_path / "trained.pt"
     weight.write_bytes(b"weight")
     monkeypatch.setattr(
-        "autolabel.workbench.views.labeling.widgets.auto_labeling.auto_labeling.QInputDialog.getText",
+        "autolabelt.workbench.views.labeling.widgets.auto_labeling.auto_labeling.QInputDialog.getText",
         lambda *_: ("person, car", True))
     assert widget.prompt_and_import_local_weight(weight)
     config = yaml.safe_load(Path(loaded[0]).read_text(encoding="utf-8"))
@@ -217,7 +217,7 @@ def test_image_model_accepts_local_yolo_weight(monkeypatch, tmp_path):
     assert config["model_path"] == str(weight)
     assert config["display_name"] == "本地 YOLO · trained"
     assert config["classes"] == ["person", "car"]
-    from autolabel.models.image_yolo import parse_class_names
+    from autolabelt.models.image_yolo import parse_class_names
     assert parse_class_names("人，汽车") == ["人", "汽车"]
     with pytest.raises(ValueError):
         parse_class_names("person, ")
@@ -231,7 +231,7 @@ def test_local_yolo_image_model_converts_detection_to_native_shape(monkeypatch, 
     import numpy as np
     from PyQt6 import QtGui
     import ultralytics
-    from autolabel.models.image_yolo import LocalYOLOImageModel
+    from autolabelt.models.image_yolo import LocalYOLOImageModel
 
     class Tensor:
         def __init__(self, values):
@@ -275,8 +275,8 @@ def test_local_yolo_image_model_converts_detection_to_native_shape(monkeypatch, 
 def test_model_download_status_and_progress(monkeypatch, tmp_path):
     import json
     from PyQt6 import QtWidgets
-    from autolabel.models.downloader import model_download_state, model_path
-    from autolabel.video_dock import VideoDatasetDock
+    from autolabelt.models.downloader import model_download_state, model_path
+    from autolabelt.video_dock import VideoDatasetDock
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     monkeypatch.setenv("AUTOLABEL_MODEL_DIR", str(tmp_path))
@@ -305,7 +305,7 @@ def test_model_download_status_and_progress(monkeypatch, tmp_path):
 
 def test_model_dialog_sources_and_required_labels(monkeypatch):
     from PyQt6 import QtWidgets
-    from autolabel.video_dock import VideoDatasetDock
+    from autolabelt.video_dock import VideoDatasetDock
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -360,8 +360,8 @@ def test_model_dialog_sources_and_required_labels(monkeypatch):
 
 def test_grouped_parameter_dialog_keeps_baseline(monkeypatch):
     from PyQt6 import QtWidgets
-    from autolabel.core import ProjectConfig
-    from autolabel.video_dock import PARAMETER_GROUPS, ParameterDialog
+    from autolabelt.core import ProjectConfig
+    from autolabelt.video_dock import PARAMETER_GROUPS, ParameterDialog
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -393,8 +393,8 @@ def test_grouped_parameter_dialog_keeps_baseline(monkeypatch):
 
 def test_video_task_completion_retains_session_model(monkeypatch, tmp_path):
     from PyQt6 import QtCore, QtWidgets
-    from autolabel.models.downloader import model_path
-    from autolabel.video_dock import VideoDatasetDock
+    from autolabelt.models.downloader import model_path
+    from autolabelt.video_dock import VideoDatasetDock
 
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
     monkeypatch.setenv("AUTOLABEL_MODEL_DIR", str(tmp_path))
